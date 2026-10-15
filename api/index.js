@@ -37,10 +37,10 @@ export default async function handler(req, res) {
     // Auth Login: POST /api/auth/login
     if (pathname === 'auth/login' && req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { identifier, password } = body;
-      const user = await db.authenticateUser(identifier, password);
+      const { userId, identifier, password } = body;
+      const user = await db.authenticateUser(userId || identifier, password);
       if (!user) {
-        return res.status(401).json({ error: 'Invalid ID/Mobile or Password' });
+        return res.status(401).json({ error: 'Invalid User ID or Password' });
       }
       return res.status(200).json(user);
     }

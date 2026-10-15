@@ -18,21 +18,27 @@ export const UserModal = ({ userData, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const cleanMobile = mobile.replace(/\D/g, '');
     if (!name.trim()) {
       showToast('Please enter full name', 'warn');
       return;
     }
-    if (cleanMobile.length !== 10) {
-      showToast('Please enter a 10-digit mobile number', 'warn');
+    const cleanLoginId = loginId.trim().toLowerCase();
+    if (!cleanLoginId) {
+      showToast('Please enter a User Login ID', 'warn');
       return;
     }
+    if (!password) {
+      showToast('Please set an account password', 'warn');
+      return;
+    }
+
+    const cleanMobile = mobile.replace(/\D/g, '');
 
     const payload = {
       id: userData?.id,
       name: name.trim(),
-      mobile: cleanMobile,
-      login_id: (loginId || cleanMobile).toLowerCase().trim(),
+      mobile: cleanMobile || '—',
+      login_id: cleanLoginId,
       password: password || 'user123',
       role: userRole,
       centre: userRole === 'Admin' || userRole === 'Accounts' ? 'ALL' : centre,
@@ -75,18 +81,6 @@ export const UserModal = ({ userData, onClose }) => {
             />
           </label>
 
-          <label>
-            Mobile Number
-            <input
-              type="tel"
-              maxLength={10}
-              placeholder="10-digit mobile number"
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-              required
-            />
-          </label>
-
           <div className="grid-row-2">
             <label>
               User Login ID (Username)
@@ -95,6 +89,7 @@ export const UserModal = ({ userData, onClose }) => {
                 placeholder="e.g. officer_kesur"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
+                required
               />
             </label>
 
@@ -109,6 +104,17 @@ export const UserModal = ({ userData, onClose }) => {
               />
             </label>
           </div>
+
+          <label>
+            Mobile Number (Optional contact)
+            <input
+              type="tel"
+              maxLength={10}
+              placeholder="10-digit mobile number (optional)"
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
+            />
+          </label>
 
           <label>
             System Role

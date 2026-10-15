@@ -147,12 +147,12 @@ export const AppProvider = ({ children }) => {
   }, [user]);
 
   // Auth operations
-  const login = async (identifier, password) => {
+  const login = async (userId, password) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ userId, password }),
       });
       if (res.ok) {
         const authedUser = await res.json();
@@ -167,17 +167,17 @@ export const AppProvider = ({ children }) => {
         return { success: false, error: msg };
       }
     } catch (e) {
-      const cleanId = String(identifier).trim().toLowerCase();
+      const cleanId = String(userId).trim().toLowerCase();
       const matched = users.find(
-        (u) => (u.login_id?.toLowerCase() === cleanId || u.mobile === cleanId) && u.password === password
+        (u) => u.login_id?.toLowerCase() === cleanId && u.password === password
       );
       if (matched) {
         setUser(matched);
         showToast(`Welcome back, ${matched.name}`, 'ok');
         return { success: true, user: matched };
       }
-      showToast('Invalid ID or Password', 'bad');
-      return { success: false, error: 'Invalid ID or Password' };
+      showToast('Invalid User ID or Password', 'bad');
+      return { success: false, error: 'Invalid User ID or Password' };
     }
   };
 

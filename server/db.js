@@ -49,14 +49,14 @@ export async function saveUser({ id, name, mobile, role, centre, active, can_cut
   }
 }
 
-export async function authenticateUser(identifier, password) {
+export async function authenticateUser(userId, password) {
   const sql = getSql();
-  const cleanId = String(identifier || '').trim().toLowerCase();
+  const cleanId = String(userId || '').trim().toLowerCase();
   const cleanPass = String(password || '').trim();
 
   const [matched] = await sql`
     SELECT * FROM users
-    WHERE (LOWER(login_id) = ${cleanId} OR mobile = ${cleanId})
+    WHERE LOWER(login_id) = ${cleanId}
       AND password = ${cleanPass}
       AND active = true
     LIMIT 1

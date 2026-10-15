@@ -70,6 +70,12 @@ The system implements 4 distinct roles, each rendering dedicated layouts, naviga
 | **Warehouse** | Warehouse In-charge | Assigned Centre (e.g. `DWL`) | - **Unload & Weigh**: Search pending confirmed sodas, enter gross/tare weighbridge readings, measure final moisture, upload weighbridge slips and unloading photos, submit for final approval.<br>- **Dispatch**: Record outbound dispatches to processing plant, track vehicle number, grade, estimated vs actual freight, maintain real-time physical stock-in-hand.<br>- **Centre Sodas**: Monitor lot status at the warehouse. |
 | **Accounts** | Accounts & Finance | All Centres (`ALL`) | - **Financial Dashboard**: Procurement spend, pending liability, freight variances, volume summaries.<br>- **Procurement Ledger**: Multi-parameter search, date filters, lot inspection, weighbridge slip review.<br>- **Export**: One-click Copy as CSV / Excel export for accounting reconciliation. |
 
+### Authentication & Role Switching Security
+- **Authentication**: Strict **User ID (Username) and Password** authentication; mobile number-based SMS/OTP logins are completely disabled.
+- **Role Switching**:
+  - The **Admin** (`role === 'Admin'`) retains master access and can switch to any role workspace immediately without re-entering credentials.
+  - All non-admin roles (Field Officer, Warehouse In-charge, Accounts) are blocked from switching roles unless they confirm either the target role's password or the master admin credentials via a secure modal.
+
 ---
 
 ## 4. Architectural Patterns & Engineering Guidelines

@@ -72,15 +72,17 @@ vercel --prod
 
 ---
 
-## 🧪 Demo User Profiles for Fast RBAC Testing
+## 🧪 System Credentials & RBAC Access
 
-| Role | Name | Mobile | Scope | Special Privileges |
-| :--- | :--- | :--- | :--- | :--- |
-| **Admin** | Avi Mangal | `9000000001` | All Centres (`ALL`) | Full administrative authorization & master data control |
-| **Field Officer** | Rahul | `9000000002` | Diwal (`DWL`) | Authorized to reduce commission for competitive bidding |
-| **Warehouse** | Suresh | `9000000003` | Diwal (`DWL`) | Weighbridge intake, slip uploads, plant dispatches |
-| **Accounts** | Accounts Sample | `9000000004` | All Centres (`ALL`) | Financial auditing, valuation, and Excel export |
-| **Field Officer** | SC2 Officer | `9000000005` | Sample Centre 2 (`SC2`) | Standard commission procurement only |
+Authentication uses **User ID (Username) and Password**. Role switching is protected: Admins can switch directly without credentials, while other roles require target role authorization.
+
+| Role | Name | User ID | Default Password | Centre Scope | Special Privileges |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Admin** | Avi Mangal | `admin` | `admin123` | All Centres (`ALL`) | Full administrative authorization & master data control |
+| **Field Officer** | Rahul | `officer_dwl` | `officer123` | Diwal (`DWL`) | Authorized to reduce commission for competitive bidding |
+| **Warehouse** | Suresh | `warehouse_dwl` | `warehouse123` | Diwal (`DWL`) | Weighbridge intake, slip uploads, plant dispatches |
+| **Accounts** | Accounts Sample | `accounts` | `accounts123` | All Centres (`ALL`) | Financial auditing, valuation, and Excel export |
+| **Field Officer** | SC2 Officer | `officer_sc2` | `officer123` | Sample Centre 2 (`SC2`) | Standard commission procurement only |
 
 ---
 
@@ -90,13 +92,14 @@ vercel --prod
 ├── api/index.js                    # Serverless API routes (Vercel & Vite dev)
 ├── scripts/
 │   ├── db-init.js                  # Neon Postgres schema migration & seeder
+│   ├── add-passwords.js            # User ID & password migration script
 │   └── test-services.js            # End-to-end verification script
 ├── server/db.js                    # Database connection & query helper service
 ├── src/
 │   ├── components/
-│   │   ├── auth/LoginPage.jsx      # Mobile + OTP and 1-click RBAC profile selector
-│   │   ├── layout/Header.jsx       # Top navigation, role pills & fast role switcher
-│   │   ├── modals/                 # Lot inspection, User manager, Image viewer
+│   │   ├── auth/LoginPage.jsx      # User ID & Password sign-in & 1-click role switcher
+│   │   ├── layout/Header.jsx       # Top navigation, role pills & secure role switcher
+│   │   ├── modals/                 # Role switch modal, Lot inspection, User manager
 │   │   └── roles/                  # Distinct RBAC portals (Admin, Officer, Warehouse, Accounts)
 │   ├── context/AppContext.jsx      # Application state synced with Neon Postgres
 │   ├── utils/calculations.js       # Pricing formulas, moisture penalties, quotas

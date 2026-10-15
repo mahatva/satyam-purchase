@@ -17,7 +17,6 @@ export const LoginPage = () => {
       role: 'Admin',
       centre: 'ALL',
       loginId: 'admin',
-      mobile: '9000000001',
       password: 'admin123',
       desc: 'Full administrative authorizations & pricing masters',
     },
@@ -26,7 +25,6 @@ export const LoginPage = () => {
       role: 'Officer',
       centre: 'DWL',
       loginId: 'officer_dwl',
-      mobile: '9000000002',
       password: 'officer123',
       desc: 'Field Officer Diwal · Can reduce commission for farmers',
     },
@@ -35,7 +33,6 @@ export const LoginPage = () => {
       role: 'Warehouse',
       centre: 'DWL',
       loginId: 'warehouse_dwl',
-      mobile: '9000000003',
       password: 'warehouse123',
       desc: 'Warehouse In-charge Diwal · Weighbridge & plant dispatches',
     },
@@ -44,7 +41,6 @@ export const LoginPage = () => {
       role: 'Accounts',
       centre: 'ALL',
       loginId: 'accounts',
-      mobile: '9000000004',
       password: 'accounts123',
       desc: 'Accounts & Finance · Cross-centre ledger & CSV export',
     },
@@ -53,7 +49,6 @@ export const LoginPage = () => {
       role: 'Officer',
       centre: 'SC2',
       loginId: 'officer_sc2',
-      mobile: '9000000005',
       password: 'officer123',
       desc: 'Field Officer Sample Centre 2 · Standard commission',
     },
@@ -62,7 +57,7 @@ export const LoginPage = () => {
   const handleLoginSubmit = async (e) => {
     e?.preventDefault();
     if (!identifier.trim() || !password) {
-      setError('Please enter both User ID/Mobile and Password');
+      setError('Please enter both User ID and Password');
       return;
     }
 
@@ -118,10 +113,10 @@ export const LoginPage = () => {
           </h2>
 
           <label>
-            User ID or Mobile Number
+            User ID (Username)
             <input
               type="text"
-              placeholder="e.g. admin or 9000000001"
+              placeholder="e.g. admin or officer_dwl"
               value={identifier}
               onChange={(e) => {
                 setIdentifier(e.target.value);
