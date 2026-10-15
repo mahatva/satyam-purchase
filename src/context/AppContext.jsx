@@ -22,17 +22,11 @@ export const AppProvider = ({ children }) => {
   // Authentication & RBAC state
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('satyam_user');
-    return saved
-      ? JSON.parse(saved)
-      : {
-          id: 1,
-          name: 'Avi Mangal',
-          mobile: '9000000001',
-          role: 'Admin',
-          centre: 'ALL',
-          active: true,
-          can_cut_comm: true,
-        };
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [users, setUsers] = useState([]);
@@ -183,6 +177,7 @@ export const AppProvider = ({ children }) => {
 
   const logout = () => {
     if (user) logAudit(`User ${user.name} logged out`);
+    localStorage.removeItem('satyam_user');
     setUser(null);
     showToast('Logged out successfully', 'info');
   };

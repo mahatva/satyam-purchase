@@ -1,58 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ROLES, centreName } from '../../utils/calculations';
 
 export const LoginPage = () => {
-  const { login, users } = useApp();
+  const { login } = useApp();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Default demo user credentials with IDs and passwords
-  const demoCredentials = [
-    {
-      name: 'Avi Mangal',
-      role: 'Admin',
-      centre: 'ALL',
-      loginId: 'admin',
-      password: 'admin123',
-      desc: 'Full administrative authorizations & pricing masters',
-    },
-    {
-      name: 'Rahul (sample)',
-      role: 'Officer',
-      centre: 'DWL',
-      loginId: 'officer_dwl',
-      password: 'officer123',
-      desc: 'Field Officer Diwal · Can reduce commission for farmers',
-    },
-    {
-      name: 'Suresh (sample)',
-      role: 'Warehouse',
-      centre: 'DWL',
-      loginId: 'warehouse_dwl',
-      password: 'warehouse123',
-      desc: 'Warehouse In-charge Diwal · Weighbridge & plant dispatches',
-    },
-    {
-      name: 'Accounts (sample)',
-      role: 'Accounts',
-      centre: 'ALL',
-      loginId: 'accounts',
-      password: 'accounts123',
-      desc: 'Accounts & Finance · Cross-centre ledger & CSV export',
-    },
-    {
-      name: 'Sample officer SC2',
-      role: 'Officer',
-      centre: 'SC2',
-      loginId: 'officer_sc2',
-      password: 'officer123',
-      desc: 'Field Officer Sample Centre 2 · Standard commission',
-    },
-  ];
 
   const handleLoginSubmit = async (e) => {
     e?.preventDefault();
@@ -68,18 +23,6 @@ export const LoginPage = () => {
 
     if (!res.success) {
       setError(res.error || 'Invalid credentials. Please check your ID and Password.');
-    }
-  };
-
-  const handleQuickFillAndLogin = async (demo) => {
-    setIdentifier(demo.loginId);
-    setPassword(demo.password);
-    setError('');
-    setLoading(true);
-    const res = await login(demo.loginId, demo.password);
-    setLoading(false);
-    if (!res.success) {
-      setError(res.error || 'Login failed');
     }
   };
 
@@ -180,44 +123,6 @@ export const LoginPage = () => {
             {loading ? 'Authenticating...' : 'Sign In to Portal'}
           </button>
         </form>
-      </div>
-
-      {/* 1-Click Quick Fill & Demo Credentials */}
-      <div className="card">
-        <div className="card-header">
-          <h2>
-            Role Credentials & Demo Logins <span className="hi-label">Tap to fill & sign in</span>
-          </h2>
-        </div>
-        <p style={{ color: 'var(--muted)', fontSize: '0.82rem', marginTop: '-6px' }}>
-          All 4 roles are configured with dedicated IDs and passwords. Click any profile below to sign in:
-        </p>
-        <div className="demo-users-list">
-          {demoCredentials.map((u) => (
-            <button
-              key={u.loginId}
-              type="button"
-              className="demo-user-btn"
-              onClick={() => handleQuickFillAndLogin(u)}
-            >
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '0.94rem' }}>{u.name}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                  ID: <code style={{ fontFamily: 'var(--f-num)', color: 'var(--accent)', fontWeight: 600 }}>{u.loginId}</code> · Pass: <code style={{ fontFamily: 'var(--f-num)', color: 'var(--ink)' }}>{u.password}</code>
-                </div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '2px' }}>
-                  {u.desc}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span className={`role-badge ${u.role}`}>{ROLES[u.role] || u.role}</span>
-                <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '4px' }}>
-                  {centreName(u.centre)}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

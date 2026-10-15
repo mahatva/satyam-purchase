@@ -166,6 +166,8 @@ flowchart TD
 
 ## 6. Recent Changes & Evolution Log
 
+- **2026-10-16 (Architecture Documentation)**:
+  - Created comprehensive system architecture reference document ([`ARCHITECTURE.md`](file:///Users/mahatvagarg/Documents/GitHub/satyam%20purchase/ARCHITECTURE.md)) detailing client-server data flows, component hierarchy, entity-relationship models, sequence diagrams for authentication and role switching, and calculation engines.
 - **2026-10-16**:
   - Implemented mandatory Continuous Auto-Update Protocol for Antigravity agents in `SKILL.md` and `AGENTS.md`.
   - Removed all mobile/OTP login flows; enforced pure User ID (Username) + Password authentication across frontend and backend.

@@ -89,6 +89,8 @@ Authentication uses **User ID (Username) and Password**. Role switching is prote
 ## 📁 Repository Structure
 ```
 ├── .agents/skills/satyam-purchase/ # Custom Antigravity agent domain skill & runbook
+├── ARCHITECTURE.md                 # System Architecture & Technical Specifications
+├── AGENTS.md                       # Workspace agent execution guidelines & rules
 ├── api/index.js                    # Serverless API routes (Vercel & Vite dev)
 ├── scripts/
 │   ├── db-init.js                  # Neon Postgres schema migration & seeder
@@ -109,6 +111,8 @@ Authentication uses **User ID (Username) and Password**. Role switching is prote
 ├── vercel.json                     # Vercel SPA and serverless function rewrite rules
 └── vite.config.js                  # Vite configuration with API dev middleware
 ```
+
+> For deep architectural details, ER diagrams, and sequence flows, refer to [ARCHITECTURE.md](file:///Users/mahatvagarg/Documents/GitHub/satyam%20purchase/ARCHITECTURE.md).
 
 ---
 

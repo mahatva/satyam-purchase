@@ -127,12 +127,26 @@ export async function updateSoda(id, updates) {
   const [existing] = await sql`SELECT * FROM sodas WHERE id = ${id}`;
   if (!existing) throw new Error(`Soda ${id} not found`);
 
+  const formatJson = (v) => {
+    if (v == null) return null;
+    if (typeof v === 'string') {
+      try {
+        JSON.parse(v);
+        return v;
+      } catch {
+        return JSON.stringify(v);
+      }
+    }
+    return JSON.stringify(v);
+  };
+
   const merged = {
     ...existing,
     ...updates,
-    history: updates.history ? JSON.stringify(updates.history) : existing.history,
-    rate_snapshot: updates.rate_snapshot ? JSON.stringify(updates.rate_snapshot) : existing.rate_snapshot
   };
+
+  const historyJson = formatJson(updates.history !== undefined ? updates.history : existing.history);
+  const snapJson = formatJson(updates.rate_snapshot !== undefined ? updates.rate_snapshot : existing.rate_snapshot);
 
   const [updated] = await sql`
     UPDATE sodas
@@ -147,7 +161,8 @@ export async function updateSoda(id, updates) {
         slip_img = ${merged.slip_img ?? null},
         final_rate = ${merged.final_rate ?? null},
         amount = ${merged.amount ?? null},
-        history = ${merged.history}
+        history = ${historyJson}::jsonb,
+        rate_snapshot = ${snapJson}::jsonb
     WHERE id = ${id}
     RETURNING *
   `;
