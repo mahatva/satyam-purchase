@@ -17,8 +17,10 @@
   - Admin (`role === 'Admin'`) can switch to any role instantly without password verification.
   - All non-admin roles (Officer, Warehouse, Accounts) are blocked from switching unless they verify the target role's password or the master admin credentials.
 
-## 3. Build & Test Verification
-Before completing any task:
-1. Run `npm run build` (must pass with 0 errors).
-2. Run `node scripts/test-services.js` (must pass all Neon database and auth tests).
-3. Commit and push the changes to GitHub (`origin main`).
+## 3. Build & Test Verification (Automated UTs & E2E)
+- **NO Web-Based / Browser Subagent Testing**: Do NOT spin up browser sessions or manual web-based testing for routine tasks. Always write and run automated, headless Unit Tests (UTs) and End-to-End (E2E) test scripts.
+- **Verification Commands Before Completing Tasks**:
+  1. `npm run test:unit` (must pass 100% of unit tests in `tests/unit/`).
+  2. `npm run test:e2e` (must pass all 30 database and lifecycle assertions).
+  3. `npm run build` (must build production bundle with 0 errors).
+  4. Commit and push the changes to GitHub (`origin main`).

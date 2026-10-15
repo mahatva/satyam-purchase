@@ -145,27 +145,34 @@ Whenever you work on this codebase, you must follow this strict checklist before
 
 ```mermaid
 flowchart TD
-    A[Code / Schema / Config Modified] --> B[Run Verification: npm run build & test-services.js]
-    B --> C{Tests Passed?}
+    A[Code / Schema / Config Modified] --> B[Run Automated Verification: npm test]
+    B --> C{UTs & E2E Passed?}
     C -- No --> D[Fix Errors & Retest]
     D --> B
     C -- Yes --> E[Update .agents/skills/satyam-purchase/SKILL.md]
-    E --> F[Update README.md if User-Facing]
+    E --> F[Update README.md & ARCHITECTURE.md if applicable]
     F --> G[Append Entry to Change Log in SKILL.md]
     G --> H[Git Commit & Push to origin/main]
 ```
 
 ### Self-Update Checklist:
-1. **Schema & Models**: If tables, columns, or data structures changed, update Section 4.
-2. **Auth & Credentials**: If login methods, passwords, or permissions changed, update Section 3.
-3. **Pricing / Math**: If ceiling, penalty, or shortage formulas changed, update Section 2.
-4. **API Routes**: If endpoints or payloads changed, update Section 4.
-5. **Change Log**: Add date, author, and description in Section 6 below.
+1. **Automated Testing Over Web Browser**: Do NOT rely on slow web-browser sessions for testing; always run headless Unit Tests (`npm run test:unit`) and Database E2E Tests (`npm run test:e2e`).
+2. **Schema & Models**: If tables, columns, or data structures changed, update Section 4.
+3. **Auth & Credentials**: If login methods, passwords, or permissions changed, update Section 3.
+4. **Pricing / Math**: If ceiling, penalty, or shortage formulas changed, update Section 2.
+5. **API Routes**: If endpoints or payloads changed, update Section 4.
+6. **Change Log**: Add date, author, and description in Section 6 below.
 
 ---
 
 ## 6. Recent Changes & Evolution Log
 
+- **2026-10-16 (Auth Persistence & Test Automation)**:
+  - Fixed logout persistence bug in `AppContext.jsx`: removed fallback admin auto-login on initial load; unauthenticated state now stays `null` so refreshing after logout remains on the `LoginPage`.
+  - Removed demo credentials cards ("Role Credentials & Demo Logins") from `LoginPage.jsx` for production security and cleanliness.
+  - Implemented automated headless Unit Testing (Vitest in `tests/unit/`) for pricing math and RBAC authorization policies.
+  - Implemented automated headless End-to-End integration suite (`scripts/test-e2e.js`) covering full lifecycle (auth, price masters, quota matrices, deal booking, approvals, unloading, freight dispatches, and audit trail).
+  - Enforced policy: Avoid slow/flaky web-browser testing; execute `npm test` (`test:unit` and `test:e2e`).
 - **2026-10-16 (Architecture Documentation)**:
   - Created comprehensive system architecture reference document ([`ARCHITECTURE.md`](file:///Users/mahatvagarg/Documents/GitHub/satyam%20purchase/ARCHITECTURE.md)) detailing client-server data flows, component hierarchy, entity-relationship models, sequence diagrams for authentication and role switching, and calculation engines.
 - **2026-10-16**:
