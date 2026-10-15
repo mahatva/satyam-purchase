@@ -147,10 +147,38 @@ export const AppProvider = ({ children }) => {
   }, [user]);
 
   // Auth operations
-  const login = (selectedUser) => {
-    setUser(selectedUser);
-    logAudit(`Logged in as ${selectedUser.name} (${selectedUser.role})`);
-    showToast(`Welcome back, ${selectedUser.name}`, 'ok');
+  const login = async (identifier, password) => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier, password }),
+      });
+      if (res.ok) {
+        const authedUser = await res.json();
+        setUser(authedUser);
+        logAudit(`Logged in as ${authedUser.name} (${authedUser.role})`);
+        showToast(`Welcome back, ${authedUser.name}`, 'ok');
+        return { success: true, user: authedUser };
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const msg = errData.error || 'Invalid credentials';
+        showToast(msg, 'bad');
+        return { success: false, error: msg };
+      }
+    } catch (e) {
+      const cleanId = String(identifier).trim().toLowerCase();
+      const matched = users.find(
+        (u) => (u.login_id?.toLowerCase() === cleanId || u.mobile === cleanId) && u.password === password
+      );
+      if (matched) {
+        setUser(matched);
+        showToast(`Welcome back, ${matched.name}`, 'ok');
+        return { success: true, user: matched };
+      }
+      showToast('Invalid ID or Password', 'bad');
+      return { success: false, error: 'Invalid ID or Password' };
+    }
   };
 
   const logout = () => {
@@ -159,15 +187,61 @@ export const AppProvider = ({ children }) => {
     showToast('Logged out successfully', 'info');
   };
 
-  const switchRole = (newRole) => {
+  const switchRole = async (newRole, password = null) => {
     if (!user) return;
-    const updated = {
-      ...user,
-      role: newRole,
-      centre: newRole === 'Admin' || newRole === 'Accounts' ? 'ALL' : 'DWL',
-    };
-    setUser(updated);
-    showToast(`Switched active view to ${ROLES[newRole] || newRole}`, 'info');
+
+    // Rule: Don't allow switching without password EXCEPT for Admin
+    if (user.role === 'Admin') {
+      // Admin can freely switch without any password prompt!
+      const targetUser = users.find((u) => u.role === newRole && u.active) || {
+        ...user,
+        role: newRole,
+        centre: newRole === 'Admin' || newRole === 'Accounts' ? 'ALL' : 'DWL',
+      };
+      setUser(targetUser);
+      logAudit(`Admin switched view to ${newRole}`);
+      showToast(`Switched active view to ${ROLES[newRole] || newRole}`, 'info');
+      return { success: true };
+    }
+
+    // Non-Admin: MUST provide password for target role
+    if (!password) {
+      // Open Password Prompt Modal
+      setModal({ type: 'role-switch', targetRole: newRole });
+      return { requiresPassword: true };
+    }
+
+    try {
+      const res = await fetch('/api/auth/verify-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetRole: newRole, password }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const authedUser = data.user || users.find((u) => u.role === newRole && u.active);
+        setUser(authedUser);
+        logAudit(`Role switched to ${newRole} after password authentication`);
+        showToast(`Authenticated & switched to ${ROLES[newRole] || newRole}`, 'ok');
+        setModal(null);
+        return { success: true };
+      } else {
+        showToast('Access Denied: Incorrect password for this role', 'bad');
+        return { success: false, error: 'Incorrect password' };
+      }
+    } catch (e) {
+      const matched = users.find(
+        (u) => (u.role === newRole || u.role === 'Admin') && u.password === password && u.active
+      );
+      if (matched) {
+        setUser(matched);
+        showToast(`Authenticated & switched to ${ROLES[newRole] || newRole}`, 'ok');
+        setModal(null);
+        return { success: true };
+      }
+      showToast('Access Denied: Incorrect password', 'bad');
+      return { success: false, error: 'Incorrect password' };
+    }
   };
 
   const logAudit = async (action) => {

@@ -10,6 +10,8 @@ export const UserModal = ({ userData, onClose }) => {
 
   const [name, setName] = useState(userData?.name || '');
   const [mobile, setMobile] = useState(userData?.mobile || '');
+  const [loginId, setLoginId] = useState(userData?.login_id || '');
+  const [password, setPassword] = useState(userData?.password || 'user123');
   const [userRole, setUserRole] = useState(userData?.role || 'Officer');
   const [centre, setCentre] = useState(userData?.centre || 'DWL');
   const [canCutComm, setCanCutComm] = useState(userData?.can_cut_comm || false);
@@ -30,6 +32,8 @@ export const UserModal = ({ userData, onClose }) => {
       id: userData?.id,
       name: name.trim(),
       mobile: cleanMobile,
+      login_id: (loginId || cleanMobile).toLowerCase().trim(),
+      password: password || 'user123',
       role: userRole,
       centre: userRole === 'Admin' || userRole === 'Accounts' ? 'ALL' : centre,
       can_cut_comm: userRole === 'Officer' ? canCutComm : false,
@@ -72,7 +76,7 @@ export const UserModal = ({ userData, onClose }) => {
           </label>
 
           <label>
-            Mobile Number (Used for OTP Sign-in)
+            Mobile Number
             <input
               type="tel"
               maxLength={10}
@@ -82,6 +86,29 @@ export const UserModal = ({ userData, onClose }) => {
               required
             />
           </label>
+
+          <div className="grid-row-2">
+            <label>
+              User Login ID (Username)
+              <input
+                type="text"
+                placeholder="e.g. officer_kesur"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+              />
+            </label>
+
+            <label>
+              Account Password
+              <input
+                type="text"
+                placeholder="Set password..."
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </label>
+          </div>
 
           <label>
             System Role

@@ -31,15 +31,15 @@ export const Header = () => {
         <div className="user-action-bar">
           {/* Quick RBAC Role Switcher */}
           <div className="role-switch-container">
-            <label htmlFor="role-switcher" style={{ fontSize: '0.75rem', color: 'var(--muted)', textTransform: 'uppercase' }}>
-              Role:
+            <label htmlFor="role-switcher" style={{ fontSize: '0.75rem', color: 'var(--muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '3px' }}>
+              {role === 'Admin' ? '⚡ Role (Admin):' : '🔒 Role:'}
             </label>
             <select
               id="role-switcher"
               className="role-select"
               value={role}
               onChange={(e) => switchRole(e.target.value)}
-              title="Switch role to test distinct RBAC views"
+              title={role === 'Admin' ? 'Admin has master override — switch views freely' : 'Password required to switch roles'}
             >
               <option value="Admin">Admin (Purchase Head)</option>
               <option value="Officer">Field Officer</option>

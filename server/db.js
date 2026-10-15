@@ -24,25 +24,59 @@ export async function getUsers() {
   return await sql`SELECT * FROM users ORDER BY id ASC`;
 }
 
-export async function saveUser({ id, name, mobile, role, centre, active, can_cut_comm }) {
+export async function saveUser({ id, name, mobile, role, centre, active, can_cut_comm, login_id, password }) {
   const sql = getSql();
+  const loginIdClean = (login_id || mobile).toLowerCase().trim();
+  const passClean = password || 'user123';
+
   if (id) {
     const [updated] = await sql`
       UPDATE users
       SET name = ${name}, mobile = ${mobile}, role = ${role}, centre = ${centre},
-          active = ${active ?? true}, can_cut_comm = ${can_cut_comm ?? false}
+          active = ${active ?? true}, can_cut_comm = ${can_cut_comm ?? false},
+          login_id = ${loginIdClean}, password = ${passClean}
       WHERE id = ${id}
       RETURNING *
     `;
     return updated;
   } else {
     const [inserted] = await sql`
-      INSERT INTO users (name, mobile, role, centre, active, can_cut_comm)
-      VALUES (${name}, ${mobile}, ${role}, ${centre}, ${active ?? true}, ${can_cut_comm ?? false})
+      INSERT INTO users (name, mobile, role, centre, active, can_cut_comm, login_id, password)
+      VALUES (${name}, ${mobile}, ${role}, ${centre}, ${active ?? true}, ${can_cut_comm ?? false}, ${loginIdClean}, ${passClean})
       RETURNING *
     `;
     return inserted;
   }
+}
+
+export async function authenticateUser(identifier, password) {
+  const sql = getSql();
+  const cleanId = String(identifier || '').trim().toLowerCase();
+  const cleanPass = String(password || '').trim();
+
+  const [matched] = await sql`
+    SELECT * FROM users
+    WHERE (LOWER(login_id) = ${cleanId} OR mobile = ${cleanId})
+      AND password = ${cleanPass}
+      AND active = true
+    LIMIT 1
+  `;
+  return matched || null;
+}
+
+export async function verifyRolePassword(targetRole, password) {
+  const sql = getSql();
+  const cleanPass = String(password || '').trim();
+
+  // Accept password if it matches any active user of targetRole OR any Admin user
+  const [matched] = await sql`
+    SELECT * FROM users
+    WHERE (role = ${targetRole} OR role = 'Admin')
+      AND password = ${cleanPass}
+      AND active = true
+    LIMIT 1
+  `;
+  return matched || null;
 }
 
 export async function toggleUserStatus(id, active) {

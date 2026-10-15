@@ -34,6 +34,28 @@ export default async function handler(req, res) {
       });
     }
 
+    // Auth Login: POST /api/auth/login
+    if (pathname === 'auth/login' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { identifier, password } = body;
+      const user = await db.authenticateUser(identifier, password);
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid ID/Mobile or Password' });
+      }
+      return res.status(200).json(user);
+    }
+
+    // Auth Verify Role Switch: POST /api/auth/verify-role
+    if (pathname === 'auth/verify-role' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { targetRole, password } = body;
+      const verified = await db.verifyRolePassword(targetRole, password);
+      if (!verified) {
+        return res.status(401).json({ error: 'Incorrect password for target role' });
+      }
+      return res.status(200).json({ ok: true, user: verified });
+    }
+
     // Users
     if (pathname === 'users') {
       if (req.method === 'GET') {

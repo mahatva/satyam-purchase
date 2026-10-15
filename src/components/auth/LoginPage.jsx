@@ -3,65 +3,89 @@ import { useApp } from '../../context/AppContext';
 import { ROLES, centreName } from '../../utils/calculations';
 
 export const LoginPage = () => {
-  const { login, users, neonInfo } = useApp();
-  const [mobile, setMobile] = useState('');
-  const [step, setStep] = useState('phone'); // 'phone' | 'otp'
-  const [otp, setOtp] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
+  const { login, users } = useApp();
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Fallback demo users if Neon is syncing
-  const defaultDemoUsers = [
-    { id: 1, name: 'Avi Mangal', mobile: '9000000001', role: 'Admin', centre: 'ALL', active: true, can_cut_comm: true },
-    { id: 2, name: 'Rahul (sample)', mobile: '9000000002', role: 'Officer', centre: 'DWL', active: true, can_cut_comm: true },
-    { id: 3, name: 'Suresh (sample)', mobile: '9000000003', role: 'Warehouse', centre: 'DWL', active: true, can_cut_comm: false },
-    { id: 4, name: 'Accounts (sample)', mobile: '9000000004', role: 'Accounts', centre: 'ALL', active: true, can_cut_comm: false },
-    { id: 5, name: 'Sample officer SC2', mobile: '9000000005', role: 'Officer', centre: 'SC2', active: true, can_cut_comm: false },
+  // Default demo user credentials with IDs and passwords
+  const demoCredentials = [
+    {
+      name: 'Avi Mangal',
+      role: 'Admin',
+      centre: 'ALL',
+      loginId: 'admin',
+      mobile: '9000000001',
+      password: 'admin123',
+      desc: 'Full administrative authorizations & pricing masters',
+    },
+    {
+      name: 'Rahul (sample)',
+      role: 'Officer',
+      centre: 'DWL',
+      loginId: 'officer_dwl',
+      mobile: '9000000002',
+      password: 'officer123',
+      desc: 'Field Officer Diwal · Can reduce commission for farmers',
+    },
+    {
+      name: 'Suresh (sample)',
+      role: 'Warehouse',
+      centre: 'DWL',
+      loginId: 'warehouse_dwl',
+      mobile: '9000000003',
+      password: 'warehouse123',
+      desc: 'Warehouse In-charge Diwal · Weighbridge & plant dispatches',
+    },
+    {
+      name: 'Accounts (sample)',
+      role: 'Accounts',
+      centre: 'ALL',
+      loginId: 'accounts',
+      mobile: '9000000004',
+      password: 'accounts123',
+      desc: 'Accounts & Finance · Cross-centre ledger & CSV export',
+    },
+    {
+      name: 'Sample officer SC2',
+      role: 'Officer',
+      centre: 'SC2',
+      loginId: 'officer_sc2',
+      mobile: '9000000005',
+      password: 'officer123',
+      desc: 'Field Officer Sample Centre 2 · Standard commission',
+    },
   ];
 
-  const displayUsers = users && users.length > 0 ? users : defaultDemoUsers;
-
-  const handleSendOtp = (e) => {
+  const handleLoginSubmit = async (e) => {
     e?.preventDefault();
-    const cleanMob = mobile.replace(/\D/g, '');
-    const matched = displayUsers.find((u) => u.mobile === cleanMob);
-
-    if (cleanMob.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    if (!matched) {
-      setError('This number is not registered. Choose a demo user below or ask Admin to add you.');
-      return;
-    }
-    if (!matched.active) {
-      setError('This account is deactivated. Contact Administrator.');
+    if (!identifier.trim() || !password) {
+      setError('Please enter both User ID/Mobile and Password');
       return;
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    setGeneratedCode(code);
+    setLoading(true);
     setError('');
-    setStep('otp');
-  };
+    const res = await login(identifier.trim(), password);
+    setLoading(false);
 
-  const handleVerifyOtp = (e) => {
-    e?.preventDefault();
-    if (otp !== generatedCode) {
-      setError('Invalid OTP code. Please check and try again.');
-      return;
-    }
-    const cleanMob = mobile.replace(/\D/g, '');
-    const matched = displayUsers.find((u) => u.mobile === cleanMob);
-    if (matched) {
-      login(matched);
+    if (!res.success) {
+      setError(res.error || 'Invalid credentials. Please check your ID and Password.');
     }
   };
 
-  const handleQuickDemoSelect = (u) => {
-    setMobile(u.mobile);
+  const handleQuickFillAndLogin = async (demo) => {
+    setIdentifier(demo.loginId);
+    setPassword(demo.password);
     setError('');
-    login(u);
+    setLoading(true);
+    const res = await login(demo.loginId, demo.password);
+    setLoading(false);
+    if (!res.success) {
+      setError(res.error || 'Login failed');
+    }
   };
 
   return (
@@ -82,119 +106,118 @@ export const LoginPage = () => {
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
           <span className="neon-badge">
             <span className="neon-dot"></span>
-            Powered by Neon Lakebase Postgres & Auth
+            Neon Lakebase Postgres & Auth Connected
           </span>
         </div>
       </div>
 
       <div className="login-card">
-        {step === 'phone' ? (
-          <form onSubmit={handleSendOtp} style={{ display: 'grid', gap: '14px' }}>
-            <h2>
-              Sign In <span className="hi-label">लॉगिन करें</span>
-            </h2>
-            <label>
-              Mobile Number
+        <form onSubmit={handleLoginSubmit} style={{ display: 'grid', gap: '14px' }}>
+          <h2>
+            Sign In with Password <span className="hi-label">आईडी व पासवर्ड</span>
+          </h2>
+
+          <label>
+            User ID or Mobile Number
+            <input
+              type="text"
+              placeholder="e.g. admin or 9000000001"
+              value={identifier}
+              onChange={(e) => {
+                setIdentifier(e.target.value);
+                setError('');
+              }}
+              autoFocus
+              required
+            />
+          </label>
+
+          <label>
+            Password
+            <div style={{ position: 'relative' }}>
               <input
-                type="tel"
-                maxLength={10}
-                placeholder="10-digit mobile number"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-                autoFocus
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter password..."
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                required
               />
-            </label>
-
-            {error && (
-              <div style={{ padding: '8px 12px', background: 'var(--bad-soft)', color: 'var(--bad)', borderRadius: '6px', fontSize: '0.88rem' }}>
-                {error}
-              </div>
-            )}
-
-            <button type="submit" className="btn" disabled={mobile.length !== 10}>
-              Send Verification OTP
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} style={{ display: 'grid', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>Enter OTP</h2>
               <button
                 type="button"
-                className="btn sec sm"
-                onClick={() => setStep('phone')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 0,
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                }}
+                onClick={() => setShowPassword(!showPassword)}
               >
-                Change Number
+                {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
+          </label>
+
+          {error && (
             <div
               style={{
-                padding: '10px 12px',
-                background: 'var(--warn-soft)',
-                color: 'var(--warn)',
+                padding: '8px 12px',
+                background: 'var(--bad-soft)',
+                color: 'var(--bad)',
                 borderRadius: '6px',
                 fontSize: '0.88rem',
+                fontWeight: 600,
               }}
             >
-              Prototype Mode: SMS simulated. Your OTP code is:{' '}
-              <b style={{ fontFamily: 'var(--f-num)', fontSize: '1.1rem' }}>{generatedCode}</b>
+              ⚠️ {error}
             </div>
+          )}
 
-            <label>
-              6-digit OTP
-              <input
-                type="text"
-                maxLength={6}
-                style={{ textAlign: 'center', letterSpacing: '0.3em', fontSize: '1.4rem', fontFamily: 'var(--f-num)' }}
-                placeholder="------"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                autoFocus
-              />
-            </label>
-
-            {error && (
-              <div style={{ padding: '8px 12px', background: 'var(--bad-soft)', color: 'var(--bad)', borderRadius: '6px', fontSize: '0.88rem' }}>
-                {error}
-              </div>
-            )}
-
-            <button type="submit" className="btn" disabled={otp.length !== 6}>
-              Verify & Enter Portal
-            </button>
-          </form>
-        )}
+          <button type="submit" className="btn" disabled={loading || !identifier || !password}>
+            {loading ? 'Authenticating...' : 'Sign In to Portal'}
+          </button>
+        </form>
       </div>
 
-      {/* Quick Demo Logins for fast evaluation */}
+      {/* 1-Click Quick Fill & Demo Credentials */}
       <div className="card">
         <div className="card-header">
           <h2>
-            1-Click Demo Logins <span className="hi-label">Tap any role</span>
+            Role Credentials & Demo Logins <span className="hi-label">Tap to fill & sign in</span>
           </h2>
         </div>
         <p style={{ color: 'var(--muted)', fontSize: '0.82rem', marginTop: '-6px' }}>
-          Select any user profile below to instantly experience their dedicated RBAC workspace:
+          All 4 roles are configured with dedicated IDs and passwords. Click any profile below to sign in:
         </p>
         <div className="demo-users-list">
-          {displayUsers.map((u) => (
+          {demoCredentials.map((u) => (
             <button
-              key={u.id || u.mobile}
+              key={u.loginId}
               type="button"
               className="demo-user-btn"
-              onClick={() => handleQuickDemoSelect(u)}
+              onClick={() => handleQuickFillAndLogin(u)}
             >
               <div>
                 <div style={{ fontWeight: 700, fontSize: '0.94rem' }}>{u.name}</div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                  Centre: {centreName(u.centre)}
-                  {u.can_cut_comm && ' · Can cut commission'}
+                  ID: <code style={{ fontFamily: 'var(--f-num)', color: 'var(--accent)', fontWeight: 600 }}>{u.loginId}</code> · Pass: <code style={{ fontFamily: 'var(--f-num)', color: 'var(--ink)' }}>{u.password}</code>
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '2px' }}>
+                  {u.desc}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span className={`role-badge ${u.role}`}>{ROLES[u.role] || u.role}</span>
-                <div style={{ fontFamily: 'var(--f-num)', fontSize: '0.78rem', color: 'var(--muted)', marginTop: '2px' }}>
-                  {u.mobile}
+                <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '4px' }}>
+                  {centreName(u.centre)}
                 </div>
               </div>
             </button>

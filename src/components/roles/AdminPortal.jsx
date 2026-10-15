@@ -402,7 +402,7 @@ export const AdminPortal = () => {
                     >
                       <div className="item-top">
                         <div>
-                          <b>{u.name}</b> · <span style={{ fontFamily: 'var(--f-num)' }}>+91 {u.mobile}</span>
+                          <b>{u.name}</b> · ID: <code style={{ fontFamily: 'var(--f-num)', color: 'var(--accent)', fontWeight: 700 }}>{u.login_id || u.mobile}</code> · Pass: <code style={{ fontFamily: 'var(--f-num)', color: 'var(--ink)' }}>{u.password || '••••••'}</code> · <span style={{ fontFamily: 'var(--f-num)', color: 'var(--muted)' }}>+91 {u.mobile}</span>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <span className={`role-badge ${u.role}`}>{centreName(u.centre)}</span>

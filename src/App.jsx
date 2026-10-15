@@ -8,6 +8,7 @@ import { WarehousePortal } from './components/roles/WarehousePortal';
 import { AccountsPortal } from './components/roles/AccountsPortal';
 import { SodaDetailModal } from './components/modals/SodaDetailModal';
 import { UserModal } from './components/modals/UserModal';
+import { RoleSwitchModal } from './components/modals/RoleSwitchModal';
 import { ImageViewer } from './components/modals/ImageViewer';
 
 const MainContent = () => {
@@ -38,6 +39,13 @@ const MainContent = () => {
       {modal?.type === 'user' && (
         <UserModal
           userData={modal.data}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {modal?.type === 'role-switch' && (
+        <RoleSwitchModal
+          targetRole={modal.targetRole}
           onClose={() => setModal(null)}
         />
       )}
