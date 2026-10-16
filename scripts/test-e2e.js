@@ -21,6 +21,8 @@ if (fs.existsSync(envPath)) {
 
 import * as db from '../server/db.js';
 
+const wait = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function runE2ETests() {
   console.log('=== Starting Satyam Purchase Automated E2E Test Suite ===\n');
 

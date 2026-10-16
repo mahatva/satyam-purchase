@@ -10,7 +10,25 @@ export const getSql = () => {
   if (!url) {
     throw new Error('DATABASE_URL is not set');
   }
-  return neon(url);
+  const rawSql = neon(url);
+  const sql = async (strings, ...values) => {
+    let lastErr;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await rawSql(strings, ...values);
+      } catch (err) {
+        lastErr = err;
+        const msg = String(err?.message || err?.cause?.message || '');
+        if (msg.includes('terminated') || msg.includes('CONTENT_LENGTH_MISMATCH') || msg.includes('fetch')) {
+          await new Promise((r) => setTimeout(r, 100 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr;
+  };
+  return sql;
 };
 
 export async function checkConnection() {
