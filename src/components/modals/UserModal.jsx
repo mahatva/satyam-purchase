@@ -160,7 +160,7 @@ export const UserModal = ({ userData, onClose }) => {
           )}
 
           <button type="submit" className="btn" style={{ marginTop: '8px' }}>
-            {isEdit ? 'Save Changes' : 'Create User in Neon Database'}
+            {isEdit ? 'Save Changes' : 'Create User'}
           </button>
 
           {isEdit && !isSelf && (

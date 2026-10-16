@@ -44,7 +44,7 @@ export const LoginPage = () => {
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
           <span className="neon-badge">
             <span className="neon-dot"></span>
-            Neon Lakebase Postgres & Auth Connected
+            Satyam Enterprise Agri-Portal · Online
           </span>
         </div>
       </div>

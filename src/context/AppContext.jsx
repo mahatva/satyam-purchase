@@ -66,11 +66,29 @@ export const AppProvider = ({ children }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Fetch Neon Health & Data
-  const refreshData = async () => {
+  // Real-Time Cross-Tab Synchronization Channel
+  const broadcastSync = () => {
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('satyam_live_sync');
+        bc.postMessage({ type: 'LIVE_SYNC', timestamp: Date.now() });
+        bc.close();
+      }
+    } catch (e) {
+      // BroadcastChannel optional fallback
+    }
+  };
+
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date());
+
+  // Fetch Live Data with Cache Busting
+  const refreshData = async (silent = false) => {
+    if (!silent) setIsSyncing(true);
+    const cb = `_t=${Date.now()}`;
     try {
       // 1. Health & Connection
-      const healthRes = await fetch('/api/health');
+      const healthRes = await fetch(`/api/health?${cb}`);
       if (healthRes.ok) {
         const hData = await healthRes.json();
         setNeonInfo({
@@ -83,35 +101,35 @@ export const AppProvider = ({ children }) => {
       }
 
       // 2. Users
-      const usersRes = await fetch('/api/users');
+      const usersRes = await fetch(`/api/users?${cb}`);
       if (usersRes.ok) {
         const uData = await usersRes.json();
         setUsers(uData);
       }
 
       // 3. Sodas
-      const sodasRes = await fetch('/api/sodas');
+      const sodasRes = await fetch(`/api/sodas?${cb}`);
       if (sodasRes.ok) {
         const sData = await sodasRes.json();
         setSodas(sData);
       }
 
       // 4. Dispatches
-      const dpRes = await fetch('/api/dispatches');
+      const dpRes = await fetch(`/api/dispatches?${cb}`);
       if (dpRes.ok) {
         const dpData = await dpRes.json();
         setDispatches(dpData);
       }
 
       // 5. Prices
-      const prRes = await fetch('/api/prices');
+      const prRes = await fetch(`/api/prices?${cb}`);
       if (prRes.ok) {
         const prData = await prRes.json();
         setPrices(prData);
       }
 
       // 5b. Expenses
-      const expRes = await fetch('/api/expenses');
+      const expRes = await fetch(`/api/expenses?${cb}`);
       if (expRes.ok) {
         const expData = await expRes.json();
         if (Array.isArray(expData) && expData.length > 0) {
@@ -124,7 +142,7 @@ export const AppProvider = ({ children }) => {
       }
 
       // 6. Limits
-      const limRes = await fetch('/api/limits');
+      const limRes = await fetch(`/api/limits?${cb}`);
       if (limRes.ok) {
         const limData = await limRes.json();
         const map = {};
@@ -135,21 +153,69 @@ export const AppProvider = ({ children }) => {
       }
 
       // 7. Activity
-      const actRes = await fetch('/api/activity');
+      const actRes = await fetch(`/api/activity?${cb}`);
       if (actRes.ok) {
         const actData = await actRes.json();
         setActivityLogs(actData);
       }
+
+      setLastSyncedAt(new Date());
     } catch (err) {
-      console.warn('API sync notice (falling back gracefully):', err);
+      console.warn('Live sync fallback:', err);
       setNeonInfo((prev) => ({ ...prev, status: 'fallback' }));
+    } finally {
+      setIsSyncing(false);
     }
   };
 
+  // Real-time Heartbeat & Event Listeners
   useEffect(() => {
-    refreshData();
-    const interval = setInterval(refreshData, 15000);
-    return () => clearInterval(interval);
+    // 1. Initial immediate sync
+    refreshData(false);
+
+    // 2. High-frequency 3s polling for real-time multi-device sync
+    const interval = setInterval(() => {
+      refreshData(true);
+    }, 3000);
+
+    // 3. Instant sync on mobile tab focus or screen unlock
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshData(true);
+      }
+    };
+    const handleFocus = () => {
+      refreshData(true);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('visibilitychange', handleVisibility);
+      window.addEventListener('focus', handleFocus);
+    }
+
+    // 4. Cross-tab BroadcastChannel listener for 0ms same-browser sync
+    let bc = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('satyam_live_sync');
+        bc.onmessage = (e) => {
+          if (e.data?.type === 'LIVE_SYNC') {
+            refreshData(true);
+          }
+        };
+      }
+    } catch (e) {
+      // Ignore BroadcastChannel errors if restricted
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('visibilitychange', handleVisibility);
+        window.removeEventListener('focus', handleFocus);
+      }
+      if (bc) bc.close();
+    };
   }, []);
 
   // Save active user in localStorage
@@ -521,8 +587,17 @@ export const AppProvider = ({ children }) => {
   };
 
   const publishPrice = async (commodity, grade, price) => {
-    const effective_at = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const effective_at = new Date().toISOString();
     const numPrice = Number(price);
+    const optimisticId = Date.now();
+
+    // 1. Immediately apply optimistic price to local state
+    setPrices((prev) => [
+      { id: optimisticId, commodity, grade, price: numPrice, effective_at },
+      ...(prev || []).filter((p) => p.id !== optimisticId),
+    ]);
+    broadcastSync();
+
     try {
       const res = await fetch('/api/prices', {
         method: 'POST',
@@ -531,23 +606,43 @@ export const AppProvider = ({ children }) => {
       });
       if (res.ok) {
         const created = await res.json();
-        setPrices((prev) => [created, ...(prev || []).filter((p) => p.id !== created.id)]);
-      } else {
-        setPrices((prev) => [{ id: Date.now(), commodity, grade, price: numPrice, effective_at }, ...(prev || [])]);
+        setPrices((prev) => [created, ...(prev || []).filter((p) => p.id !== optimisticId && p.id !== created.id)]);
       }
-      logAudit(`Published new price for ${commodity} ${grade}: ₹${numPrice}/qtl`);
+      logAudit(`Published rate for ${commodity} Grade ${grade}: ₹${numPrice}/qtl`);
       showToast(`Published ${commodity} Grade ${grade}: ₹${numPrice}`, 'ok');
-      await refreshData();
+      broadcastSync();
+      await refreshData(true);
     } catch (e) {
-      setPrices((prev) => [{ id: Date.now(), commodity, grade, price: numPrice, effective_at }, ...(prev || [])]);
-      showToast(`Price updated locally for ${commodity} ${grade}: ₹${numPrice}`, 'info');
+      showToast(`Rate published locally: ${commodity} Grade ${grade} ₹${numPrice}`, 'info');
     }
   };
 
   const publishPrices = async (priceUpdates) => {
+    const now = Date.now();
+    const effective_at = new Date().toISOString();
+    const optimisticItems = priceUpdates.map((item, idx) => ({
+      id: now + idx + 1000,
+      commodity: item.commodity,
+      grade: item.grade,
+      price: Number(item.price),
+      effective_at,
+    }));
+
+    setPrices((prev) => [...optimisticItems, ...(prev || [])]);
+    broadcastSync();
+
     for (const item of priceUpdates) {
-      await publishPrice(item.commodity, item.grade, item.price);
+      await fetch('/api/prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commodity: item.commodity, grade: item.grade, price: Number(item.price), effective_at }),
+      });
+      logAudit(`Published rate for ${item.commodity} Grade ${item.grade}: ₹${item.price}/qtl`);
     }
+
+    showToast(`Published ${priceUpdates.length} rate${priceUpdates.length > 1 ? 's' : ''} live`, 'ok');
+    broadcastSync();
+    await refreshData(true);
   };
 
   const setLimit = async (key, centre, commodity, date_iso, limit_qty) => {
@@ -636,6 +731,8 @@ export const AppProvider = ({ children }) => {
         saveUser,
         toggleUser,
         refreshData,
+        isSyncing,
+        lastSyncedAt,
       }}
     >
       {children}

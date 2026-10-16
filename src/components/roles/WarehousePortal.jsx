@@ -485,7 +485,7 @@ export const WarehousePortal = () => {
                 className="btn"
                 disabled={!vehNo || !parseFloat(dispatchQty) || parseFloat(dispatchQty) > currentStock.stock || !actualFreight}
               >
-                Save Dispatch to Neon Database
+                Save Dispatch Entry
               </button>
             </form>
           </div>

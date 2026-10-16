@@ -184,7 +184,7 @@ export const OfficerPortal = () => {
                 Soda {createdShareCard.id} {createdShareCard.status === 'Confirmed' ? 'Confirmed!' : 'Sent for Approval'}
               </h2>
               <p style={{ fontSize: '0.86rem', color: 'var(--muted)', marginTop: '2px' }}>
-                Purchase agreement successfully registered in Neon Postgres.
+                Purchase agreement registered successfully.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>

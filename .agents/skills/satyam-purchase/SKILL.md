@@ -165,6 +165,12 @@ flowchart TD
 
 ## 6. Recent Changes & Evolution Log
 
+- **2026-10-16 (Real-Time Auto-Sync, Zero-Refresh Multi-Device Updates & UI Label Polish)**:
+  - **Eliminated Hard-Refresh Dependency**: Added 3-second continuous background auto-polling heartbeat with cache-busting timestamp query parameters (`?_t=...`) across all `/api` calls. Added mobile tab visibility (`visibilitychange`) and window focus (`focus`) listeners to trigger immediate updates when returning to the app.
+  - **Cross-Tab Real-time BroadcastChannel**: Implemented `BroadcastChannel('satyam_live_sync')` so any price publishing, expense change, or lot status mutation broadcasts across all open tabs instantaneously (0ms) without manual reload.
+  - **Strict HTTP Cache Control**: Configured `Cache-Control: no-store, no-cache, must-revalidate` and `Pragma: no-cache` in serverless API routes and HTML meta headers.
+  - **Clean Business Terminology**: Removed all technical database jargon from user-facing screens ("Neon Database", "Neon DB", "Neon production"). Replaced button labels with **"Publish Rates"**, **"Publish Rate"**, **"Save Expenses & Freight"**, and header indicator with interactive **"🟢 Live Sync"**.
+  - **Price Calculation Integrity**: Normalized commodity and grade matching in `plantPrice()`, prioritizing primary key ID descending with ISO fallback to guarantee newly published rates take effect immediately in ceiling simulators and field calculators.
 - **2026-10-16 (Pricing Engine, Dynamic Expenses & Grade Freights, Admin Controls & Warehouse Workflow Redesign)**:
   - **Fixed Plant Price Updates**: Resolved price sorting in `plantPrice()` by prioritizing primary key ID descending; newly published plant prices now immediately update reverse ceiling calculations and display tables across the application.
   - **Dynamic Expenses & Grade-Specific Freight Masters**: Created `expense_settings` table in Neon Postgres and built an interactive Expense & Freight Manager in Admin Portal (`tab === 'expenses'`). Admin can customize percentage expenses (mandi fee, commission), fixed expenses (hammali, transit, labour, bags), and configure freight rates separately for Grade A, Grade B, and Grade C per centre or globally.

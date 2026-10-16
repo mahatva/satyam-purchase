@@ -258,7 +258,7 @@ export const EditSodaModal = ({ soda, onClose }) => {
               Cancel
             </button>
             <button type="submit" className="btn">
-              Save Changes to Neon DB
+              Save Changes
             </button>
           </div>
         </form>

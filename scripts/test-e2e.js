@@ -88,10 +88,10 @@ async function runE2ETests() {
     const pricesBefore = await db.getPlantPrices();
     assert(Array.isArray(pricesBefore) && pricesBefore.length >= 6, 'Retrieved plant prices list');
 
-    await db.addPlantPrice('Maize', 'A', 2560, '2026-10-16 10:00');
+    await db.addPlantPrice('Maize', 'A', 2700, new Date().toISOString());
     const pricesAfter = await db.getPlantPrices();
     const updated = pricesAfter.find((p) => p.commodity === 'Maize' && p.grade === 'A');
-    assert(Number(updated.price) === 2560, 'Plant price updated successfully to 2560');
+    assert(Number(updated.price) === 2700, 'Plant price updated successfully to 2700');
 
     // 5b. Expenses & Grade Freight Masters Tests
     console.log('\n5b. Expense & Grade Freight Masters Tests:');
@@ -199,21 +199,26 @@ async function runE2ETests() {
 
     // Step E: Admin Edit and Delete Entry Tests
     console.log('\n7b. Admin Entry Edit and Delete Tests:');
+    await wait(150);
     await db.updateSoda(testSodaId, {
       farmer_name: 'Edited Farmer Name',
       village: 'New Village Diwal',
     });
+    await wait(150);
     sodas = await db.getSodas('DWL');
     const editedSoda = sodas.find((s) => s.id === testSodaId);
     assert(editedSoda.farmer_name === 'Edited Farmer Name', 'Admin successfully edited farmer name');
 
+    await wait(150);
     await db.deleteSoda(testSodaId);
+    await wait(150);
     sodas = await db.getSodas('DWL');
     const deletedSoda = sodas.find((s) => s.id === testSodaId);
     assert(!deletedSoda, 'Admin successfully deleted procurement entry');
 
     // 8. Audit Logs Verification
     console.log('\n8. Audit Logs & Activity Trail:');
+    await wait(150);
     await db.logActivity('E2E Runner', `Verified soda ${testSodaId}`);
     const logs = await db.getActivityLogs();
     assert(logs.length > 0, 'Activity log entry successfully recorded and retrieved');

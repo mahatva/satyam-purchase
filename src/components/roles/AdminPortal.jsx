@@ -600,7 +600,7 @@ export const AdminPortal = () => {
             </table>
           </div>
           <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-            Quotas update live in Neon Postgres. When an officer books a soda exceeding the quota, it requires Admin authorization.
+            Quotas update live across all mandi centres. When an officer books a soda exceeding the quota, it requires Admin authorization.
           </p>
         </div>
       ) : tab === 'prices' ? (
@@ -651,7 +651,7 @@ export const AdminPortal = () => {
                                     setNewPrices((prev) => ({ ...prev, [key]: '' }));
                                   }}
                                 >
-                                  Publish
+                                  Publish Rate
                                 </button>
                               )}
                             </div>
@@ -664,7 +664,7 @@ export const AdminPortal = () => {
               </table>
             </div>
             <button type="button" className="btn" onClick={handlePublishPrices}>
-              Publish All Modified Prices to Neon Database
+              Publish Rates
             </button>
           </div>
 
@@ -901,7 +901,7 @@ export const AdminPortal = () => {
 
             <div style={{ marginTop: '16px' }}>
               <button type="submit" className="btn">
-                Save Expense & Freight Masters to Neon DB
+                Save Expenses & Freight
               </button>
             </div>
           </form>
@@ -973,7 +973,7 @@ export const AdminPortal = () => {
       ) : (
         /* Activity Logs */
         <div className="card">
-          <h2>System Activity & Audit Log (Neon Postgres)</h2>
+          <h2>System Activity & Audit Trail</h2>
           <div className="items-list">
             {(activityLogs || []).map((l, i) => (
               <div key={l.id || i} className="list-item-card">

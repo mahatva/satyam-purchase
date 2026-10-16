@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { ROLES, centreName } from '../../utils/calculations';
 
 export const Header = () => {
-  const { user, role, switchRole, logout, neonInfo } = useApp();
+  const { user, role, switchRole, logout, isSyncing, lastSyncedAt, refreshData } = useApp();
 
   if (!user) return null;
 
@@ -17,9 +17,14 @@ export const Header = () => {
               Satyam <span>Purchase</span>
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-              <span className="neon-badge" title={`Connected to Neon Lakebase Postgres on branch ${neonInfo.branch || 'production'}`}>
+              <span
+                className="neon-badge"
+                style={{ cursor: 'pointer' }}
+                onClick={() => refreshData(false)}
+                title={`Real-time sync active · Tap to sync now · Last: ${lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString('en-IN') : 'just now'}`}
+              >
                 <span className="neon-dot"></span>
-                Neon {neonInfo.branch || 'Prod'}
+                {isSyncing ? 'Syncing...' : 'Live Sync'}
               </span>
               <span style={{ fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 600 }}>
                 {centreName(user.centre)}

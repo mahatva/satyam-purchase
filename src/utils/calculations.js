@@ -104,19 +104,29 @@ export const ROLES = {
 
 export function plantPrice(pricesList, c, g) {
   const list = pricesList && pricesList.length > 0 ? pricesList : M.prices;
-  const match = list
-    .filter((p) => (p.c || p.commodity) === c && (p.g || p.grade) === g)
-    .sort((a, b) => {
-      // Prioritize higher ID (most recent insert in Neon Postgres)
-      const idA = Number(a.id) || 0;
-      const idB = Number(b.id) || 0;
-      if (idB !== idA) return idB - idA;
-      // Fallback to timestamp string
-      const timeA = String(a.at || a.effective_at || '');
-      const timeB = String(b.at || b.effective_at || '');
-      return timeB.localeCompare(timeA);
-    })[0];
-  return match ? Number(match.v || match.price) : 2400;
+  const normC = String(c || '').trim().toLowerCase();
+  const normG = String(g || '').replace(/^Grade\s*/i, '').trim().toUpperCase();
+
+  const matches = list.filter((p) => {
+    const pc = String(p.c || p.commodity || '').trim().toLowerCase();
+    const pg = String(p.g || p.grade || '').replace(/^Grade\s*/i, '').trim().toUpperCase();
+    return pc === normC && pg === normG;
+  });
+
+  if (matches.length === 0) return 2400;
+
+  matches.sort((a, b) => {
+    // Prioritize highest numeric ID (most recent database insert or Date.now() timestamp)
+    const idA = Number(a.id) || 0;
+    const idB = Number(b.id) || 0;
+    if (idB !== idA) return idB - idA;
+    // Fallback to timestamp string ISO
+    const timeA = String(a.at || a.effective_at || '');
+    const timeB = String(b.at || b.effective_at || '');
+    return timeB.localeCompare(timeA);
+  });
+
+  return Number(matches[0].v || matches[0].price) || 2400;
 }
 
 export function profitFor(code) {
