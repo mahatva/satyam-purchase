@@ -124,6 +124,14 @@ async function run() {
     );
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS expense_settings (
+      centre VARCHAR(20) PRIMARY KEY,
+      expenses JSONB NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `;
+
   // Seed Users if table is empty
   const userCount = await sql`SELECT count(*)::int as count FROM users`;
   if (userCount[0].count === 0) {

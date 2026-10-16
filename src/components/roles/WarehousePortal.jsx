@@ -13,7 +13,7 @@ import {
 } from '../../utils/calculations';
 
 export const WarehousePortal = () => {
-  const { user, centre, sodas, dispatches, unloadSoda, createDispatch, setModal, showToast } = useApp();
+  const { user, centre, sodas, dispatches, expenses, unloadSoda, createDispatch, setModal, showToast } = useApp();
   const [tab, setTab] = useState('unload'); // 'unload' | 'dispatch' | 'all'
 
   const warehouseCentre = centre || 'DWL';
@@ -22,10 +22,9 @@ export const WarehousePortal = () => {
   // Unloading Form State
   const [selectedSodaId, setSelectedSodaId] = useState(null);
   const [search, setSearch] = useState('');
-  const [gross, setGross] = useState('');
-  const [tare, setTare] = useState('');
+  const [netWeight, setNetWeight] = useState('');
+  const [finalRateInput, setFinalRateInput] = useState('');
   const [unloadMoisture, setUnloadMoisture] = useState('');
-  const [finalMoisture, setFinalMoisture] = useState('');
   const [unloadPhotos, setUnloadPhotos] = useState([]);
   const [slipName, setSlipName] = useState(null);
   const [slipImg, setSlipImg] = useState(null);
@@ -46,9 +45,10 @@ export const WarehousePortal = () => {
   );
 
   const selectedSoda = sodas.find((s) => s.id === selectedSodaId);
-  const netWeight = Math.max(0, (parseFloat(gross) || 0) - (parseFloat(tare) || 0));
-  const measuredFm = parseFloat(finalMoisture) || parseFloat(unloadMoisture) || (selectedSoda?.rate_snapshot?.moistEntered || 14);
-  const calculation = selectedSoda && netWeight > 0 ? finalCalc(selectedSoda, measuredFm, netWeight) : null;
+  const netWeightNum = parseFloat(netWeight) || 0;
+  const agreedRate = Number(selectedSoda?.rate_snapshot?.agreed || selectedSoda?.snap?.agreed || 0);
+  const finalRate = parseFloat(finalRateInput) > 0 ? parseFloat(finalRateInput) : agreedRate;
+  const totalPayout = Math.round(netWeightNum * finalRate);
 
   // Unload Actions
   const handlePhotoUpload = (e) => {
@@ -83,40 +83,38 @@ export const WarehousePortal = () => {
 
   const handleSubmitUnload = async (e) => {
     e.preventDefault();
-    if (!selectedSodaId || netWeight <= 0) {
-      showToast('Please select a soda and enter valid weighbridge readings', 'warn');
+    if (!selectedSodaId || netWeightNum <= 0) {
+      showToast('Please select a soda and enter net weighbridge weight', 'warn');
       return;
     }
 
     const payload = {
-      net_weight: netWeight,
-      final_moisture: measuredFm,
-      gross_weight: parseFloat(gross) || 0,
-      tare_weight: parseFloat(tare) || 0,
-      unload_moisture: parseFloat(unloadMoisture) || measuredFm,
+      net_weight: netWeightNum,
+      final_moisture: parseFloat(unloadMoisture) || null,
+      unload_moisture: parseFloat(unloadMoisture) || null,
       unload_photos: unloadPhotos,
       slip_name: slipName,
       slip_img: slipImg,
-      final_rate: calculation ? calculation.rate : null,
-      amount: calculation ? calculation.amount : null,
+      final_rate: finalRate,
+      amount: totalPayout,
+      status: 'FinalApproved',
     };
 
     await unloadSoda(selectedSodaId, payload);
 
     // Reset
     setSelectedSodaId(null);
-    setGross('');
-    setTare('');
+    setNetWeight('');
+    setFinalRateInput('');
     setUnloadMoisture('');
-    setFinalMoisture('');
     setUnloadPhotos([]);
     setSlipName(null);
     setSlipImg(null);
   };
 
   // Dispatch Actions
-  const expenses = M.expenses[warehouseCentre] || M.expenses.DWL;
-  const freightConfig = expenses.find((e) => e.n === 'Freight to plant');
+  const currentExpenses = (expenses && expenses[warehouseCentre]) || M.expenses[warehouseCentre] || M.expenses.DWL;
+  const freightConfig = currentExpenses.find((e) => e.n === 'Freight to plant');
   const freightPerQtl = freightConfig?.vg?.[dispatchGrade] || 90;
   const estFreightTotal = (parseFloat(dispatchQty) || 0) * freightPerQtl;
   const actFreightTotal = parseFloat(actualFreight) || 0;
@@ -259,61 +257,69 @@ export const WarehousePortal = () => {
 
               <div className="grid-row-3">
                 <label>
-                  Gross Weight (qtl) <span className="hi-label">कांटा कुल वजन</span>
+                  Net Weight (qtl) <span className="hi-label">कांटा कुल नेट वजन</span>
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="e.g. 58.50"
-                    value={gross}
-                    onChange={(e) => setGross(e.target.value)}
+                    placeholder="e.g. 42.50"
+                    value={netWeight}
+                    onChange={(e) => setNetWeight(e.target.value)}
                     required
                   />
+                  <small style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>
+                    Gross & tare not required · enter net weight directly
+                  </small>
                 </label>
 
                 <label>
-                  Tare Weight (qtl) <span className="hi-label">खाली गाड़ी वजन</span>
+                  Final Purchase Rate ₹/qtl <span className="hi-label">तय भाव</span>
                   <input
                     type="number"
-                    step="0.01"
-                    placeholder="e.g. 16.80"
-                    value={tare}
-                    onChange={(e) => setTare(e.target.value)}
-                    required
+                    step="1"
+                    placeholder={`Agreed rate: ₹${agreedRate}`}
+                    value={finalRateInput}
+                    onChange={(e) => setFinalRateInput(e.target.value)}
                   />
+                  <small style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>
+                    Leave blank to consider same old agreed rate (₹{agreedRate}/qtl)
+                  </small>
                 </label>
 
                 <label>
-                  Final Moisture % <span className="hi-label">जांच नमी</span>
+                  Warehouse Moisture % <span className="hi-label">जांच नमी</span>
                   <input
                     type="number"
                     step="0.1"
                     placeholder="e.g. 14.5"
-                    value={finalMoisture || unloadMoisture}
-                    onChange={(e) => {
-                      setFinalMoisture(e.target.value);
-                      setUnloadMoisture(e.target.value);
-                    }}
-                    required
+                    value={unloadMoisture}
+                    onChange={(e) => setUnloadMoisture(e.target.value)}
                   />
+                  <small style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>
+                    Notes moisture only · does not change purchase price
+                  </small>
                 </label>
               </div>
 
-              {/* Live Calculation Preview */}
-              {netWeight > 0 && calculation && (
+              {/* Live Settlement Summary Preview */}
+              {netWeightNum > 0 && (
                 <div style={{ background: 'var(--accent-soft)', padding: '14px', borderRadius: '8px' }}>
                   <div style={{ fontWeight: 700, marginBottom: '6px' }}>Settlement Calculation Preview:</div>
                   <dl className="kv-list">
                     <dt>Net Weighbridge Quantity</dt>
-                    <dd>{q(netWeight)} qtl</dd>
-                    <dt>Moisture Variance Penalty</dt>
-                    <dd>{calculation.extra > 0 ? `+${q(calculation.extra)}% excess moisture` : 'No moisture deduction'}</dd>
-                    <dt>Adjusted Final Rate</dt>
-                    <dd style={{ fontWeight: 700 }}>{inr(calculation.rate)}/qtl</dd>
+                    <dd>{q(netWeightNum)} qtl</dd>
+                    <dt>Original Agreed Deal Rate</dt>
+                    <dd>{inr(agreedRate)}/qtl</dd>
+                    <dt>Final Settlement Rate</dt>
+                    <dd style={{ fontWeight: 700, color: 'var(--accent)' }}>
+                      {inr(finalRate)}/qtl {parseFloat(finalRateInput) > 0 ? '(Rate Overridden)' : '(Original Agreed Rate Considered)'}
+                    </dd>
+                    <dt>Warehouse Moisture Noted</dt>
+                    <dd>{unloadMoisture ? `${unloadMoisture}% (Recorded · No Price Deduction)` : 'Standard / Not Recorded'}</dd>
                     <dt className="total" style={{ fontSize: '1.05rem', color: 'var(--accent)' }}>
-                      Total Net Payout
+                      Total Final Payable
                     </dt>
                     <dd className="total" style={{ fontSize: '1.1rem', color: 'var(--accent)' }}>
-                      {inr(calculation.amount)}
+                      {inr(totalPayout)}
                     </dd>
                   </dl>
                 </div>
@@ -363,9 +369,9 @@ export const WarehousePortal = () => {
               <button
                 type="submit"
                 className="btn"
-                disabled={netWeight <= 0 || !measuredFm}
+                disabled={netWeightNum <= 0}
               >
-                Confirm Unload · Submit to Admin for Final Rate Approval
+                ✓ Complete Weighment & Close Entry (तौल दर्ज कर सौदा बंद करें)
               </button>
             </form>
           )}

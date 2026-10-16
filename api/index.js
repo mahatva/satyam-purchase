@@ -98,6 +98,25 @@ export default async function handler(req, res) {
       return res.status(200).json(soda);
     }
 
+    if (pathname.startsWith('sodas/') && req.method === 'DELETE') {
+      const id = pathname.replace('sodas/', '');
+      const deleted = await db.deleteSoda(id);
+      return res.status(200).json({ ok: true, deleted });
+    }
+
+    // Expenses & Freight Masters
+    if (pathname === 'expenses') {
+      if (req.method === 'GET') {
+        const expenses = await db.getExpenses();
+        return res.status(200).json(expenses);
+      }
+      if (req.method === 'POST') {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        const saved = await db.saveExpenses(body.centre, body.expenses);
+        return res.status(200).json(saved);
+      }
+    }
+
     // Dispatches
     if (pathname === 'dispatches') {
       if (req.method === 'GET') {

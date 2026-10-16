@@ -106,7 +106,16 @@ export function plantPrice(pricesList, c, g) {
   const list = pricesList && pricesList.length > 0 ? pricesList : M.prices;
   const match = list
     .filter((p) => (p.c || p.commodity) === c && (p.g || p.grade) === g)
-    .sort((a, b) => (b.at || b.effective_at || '').localeCompare(a.at || a.effective_at || ''))[0];
+    .sort((a, b) => {
+      // Prioritize higher ID (most recent insert in Neon Postgres)
+      const idA = Number(a.id) || 0;
+      const idB = Number(b.id) || 0;
+      if (idB !== idA) return idB - idA;
+      // Fallback to timestamp string
+      const timeA = String(a.at || a.effective_at || '');
+      const timeB = String(b.at || b.effective_at || '');
+      return timeB.localeCompare(timeA);
+    })[0];
   return match ? Number(match.v || match.price) : 2400;
 }
 
@@ -115,27 +124,27 @@ export function profitFor(code) {
   return ce?.profitOverride ?? M.profit;
 }
 
-export function commDefault(code) {
-  const expenses = M.expenses[code] || M.expenses.DWL;
+export function commDefault(code, expensesMap = null) {
+  const expenses = (expensesMap && expensesMap[code]) || M.expenses[code] || M.expenses.DWL;
   const comm = expenses.find((e) => e.n === 'Commission');
-  return comm ? comm.v : 3;
+  return comm ? Number(comm.v) : 3;
 }
 
-export function calc(code, c, g, moist, comm, pricesList = null) {
-  const cd = commDefault(code);
+export function calc(code, c, g, moist, comm, pricesList = null, expensesMap = null) {
+  const cd = commDefault(code, expensesMap);
   const cv = comm === '' || comm == null || isNaN(+comm) ? cd : Math.min(Math.max(+comm, 0), cd);
   const plant = plantPrice(pricesList, c, g);
   const profit = profitFor(code);
   const T = plant - profit;
-  const expenses = M.expenses[code] || M.expenses.DWL;
+  const expenses = (expensesMap && expensesMap[code]) || M.expenses[code] || M.expenses.DWL;
   const ex = expenses.map((e) =>
     e.n === 'Commission'
       ? { n: e.n, t: e.t, v: cv, def: cd, reduced: cv < cd }
-      : { n: e.n, t: e.t, v: e.vg ? e.vg[g] : e.v, byGrade: !!e.vg }
+      : { n: e.n, t: e.t, v: e.vg ? Number(e.vg[g]) : Number(e.v), byGrade: !!e.vg }
   );
   const ce = M.centres.find((x) => x.code === code) || M.centres[0];
-  const Pct = ex.filter((e) => e.t === 'pct').reduce((s, e) => s + e.v / 100, 0);
-  const Fix = ex.filter((e) => e.t === 'fix').reduce((s, e) => s + e.v, 0);
+  const Pct = ex.filter((e) => e.t === 'pct').reduce((s, e) => s + Number(e.v) / 100, 0);
+  const Fix = ex.filter((e) => e.t === 'fix').reduce((s, e) => s + Number(e.v), 0);
   const S = ce.shortage;
   const P = (T * (1 - S) - Fix) / (1 + Pct);
   const mr = M.moisture[c] || M.moisture.Maize;
@@ -164,19 +173,16 @@ export function calc(code, c, g, moist, comm, pricesList = null) {
   };
 }
 
-export function finalCalc(soda, fm, net) {
-  const mr = M.moisture[soda.c || soda.commodity] || M.moisture.Maize;
-  const sodaMoist = soda.rate_snapshot?.moistEntered || soda.snap?.moistEntered || 14;
-  const agreed = soda.rate_snapshot?.agreed || soda.snap?.agreed || 0;
-  const extra = Math.max(0, fm - Math.max(mr.base, sodaMoist));
+export function finalCalc(soda, fm, net, manualFinalRate = null) {
+  const agreed = Number(soda.rate_snapshot?.agreed || soda.snap?.agreed || 0);
   const rate =
-    mr.dedType === 'wt'
-      ? agreed * (1 - (mr.ded * extra) / 100)
-      : agreed - mr.ded * extra;
+    manualFinalRate != null && !isNaN(+manualFinalRate) && +manualFinalRate > 0
+      ? Number(manualFinalRate)
+      : agreed;
   return {
-    extra,
+    extra: 0,
     rate: Math.round(rate),
-    amount: Math.round(rate * (net || 0)),
+    amount: Math.round(rate * (Number(net) || 0)),
   };
 }
 

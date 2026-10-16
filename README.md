@@ -10,20 +10,20 @@ Powered by **Neon Lakebase Postgres** and **Neon Auth**, deployed seamlessly to 
 
 ### 1. Multi-Role RBAC (Role-Based Access Control)
 The platform delivers tailored, dedicated workspaces and navigation for 4 distinct operational roles:
-- **Admin / Purchase Head**: Approvals queue for over-ceiling lots and final unloaded settlements, plant delivered price publisher with version history, multi-centre daily quota matrices, system user management with role & permission assignment, live inventory and freight dashboards, and activity audit trails.
-- **Field Officer**: Real-time ceiling rate calculator with Hindi labels ("भाव कैसे बना"), reverse cost breakdown, moisture excess deduction preview, optional commission adjustment (if authorized), deal creation with quota limit checks, material photo capture, and 1-click WhatsApp deal share cards.
-- **Warehouse In-charge**: Incoming confirmed sodas queue, live weighbridge gross & tare weight recording, final moisture testing with automated penalty deduction, weighbridge slip photo/PDF attachment, and outbound plant dispatch tracking with real-time stock-in-hand monitoring.
-- **Accounts & Finance**: Cross-centre financial dashboard, pending liability tracking, comprehensive procurement audit ledger with multi-parameter filtering, and **1-Click Export as CSV** for Excel accounting integration.
+- **Admin / Purchase Head**: Master control for plant delivered prices (with immediate versioning), Expense & Freight Masters (configurable Mandi fee, commission, hammali, transit, labour, bags, and Grade A/B/C freights per centre or globally), field deal approvals queue, exclusive rights to edit or delete any deal/entry, user management, and ledger audit trails.
+- **Field Officer**: Real-time ceiling rate calculator with Hindi labels ("भाव कैसे बना"), dynamic reverse cost breakdown from live expense masters, moisture excess deduction preview, deal creation with quota limit checks, material photo capture, and 1-click WhatsApp deal share cards.
+- **Warehouse In-charge**: Incoming confirmed sodas queue, simplified weighbridge intake (**direct Net Weight**, gross/tare not required), quality moisture logging (notes only, non-deducting), optional final rate override (defaults to agreed rate), and direct deal completion (**saved and closed directly** without requiring subsequent admin approval).
+- **Accounts & Finance**: Cross-centre financial dashboard, real-time closed liability tracking, comprehensive procurement audit ledger with multi-parameter filtering, and **1-Click Export as CSV** for Excel accounting integration.
 
 ### 2. Reverse Ceiling Pricing & Settlement Formula
 - **Reverse Ceiling**:
   $$P = \frac{T \times (1 - \text{Shortage}) - \text{Fixed Expenses}}{1 + \text{Percentage Expenses}}$$
-  Where $T = \text{Plant Price} - \text{Target Margin}$.
-- **Moisture Penalty**:
-  Excess moisture above the base commodity standard (14% for Maize, 12% for Chickpea) triggers automatic deductions. Lots exceeding maximum allowable moisture (18% for Maize, 14% for Chickpea) are strictly blocked from procurement.
+  Where $T = \text{Plant Price} - \text{Target Margin}$, with dynamic expenses and grade-specific freight ($F_A, F_B, F_C$) loaded per centre.
+- **Quality Moisture Logging**:
+  Moisture recorded at unloading is logged for grain inventory and warehouse records without auto-deducting price.
 - **Weighbridge Final Settlement**:
-  $$\text{Final Rate} = \text{Agreed Rate} - \text{Excess Moisture Penalty}$$
-  $$\text{Total Lot Payout} = \text{Final Rate} \times (\text{Gross Weight} - \text{Tare Weight})$$
+  $$\text{Final Rate} = \text{Agreed Rate (or Manual Override)}$$
+  $$\text{Total Lot Payout} = \text{Final Rate} \times \text{Net Weight (qtl)}$$
 
 ### 3. Neon Cloud Backend
 - **Neon Lakebase Postgres**: High-performance, serverless Postgres connected via `@neondatabase/serverless`.

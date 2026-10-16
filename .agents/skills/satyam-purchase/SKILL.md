@@ -60,14 +60,12 @@ $$\text{Base Ceiling } P = \frac{T \times (1 - \text{Shortage Factor}) - \text{F
 - Authorized officers (`can_cut_comm: true`) can reduce commission below standard (e.g., from 3.0% down to 2.0% or 1.0%).
 - Lowering commission directly reduces $\text{PctExpenses}$, elevating the base ceiling price to allow competitive procurement during aggressive mandi bidding.
 
-### D. Warehouse Weighbridge Settlement
-1. $\text{Net Weight} = \text{Gross Weight} - \text{Tare Weight}$
-2. Final warehouse moisture $fm$ measured upon unloading:
-   $$\text{Extra Moisture} = \max(0, fm - \max(\text{Base}, \text{SodaMoisture}))$$
-3. Rate settlement:
-   - Weight Deduction: $\text{Final Rate} = \text{Agreed Rate} \times \left(1 - \frac{\text{dedRate} \times \text{Extra Moisture}}{100}\right)$
-   - Price Deduction: $\text{Final Rate} = \text{Agreed Rate} - (\text{dedRate} \times \text{Extra Moisture})$
-4. Total Payout $= \text{Final Rate} \times \text{Net Weight}$.
+### D. Warehouse Weighbridge Settlement & Immediate Lot Closure
+1. **Net Weight Intake**: Direct weighbridge net weight entered directly ($\text{Net Weight} = \text{Weighbridge Net Qtl}$). Gross and tare readings are **not required**.
+2. **Moisture Noting Only**: Warehouse measured moisture is noted/recorded for quality audit and traceability; it **does NOT alter or deduct from the purchase price**.
+3. **Flexible Final Price Override**: The warehouse interface provides an option to adjust the final settlement rate (e.g. if arrival quality was renegotiated). If left blank/unchanged, it **retains the exact original agreed rate**.
+4. **Total Payout**: $\text{Total Payout} = \text{Final Rate} \times \text{Net Weight}$.
+5. **Direct Lot Closure**: Once the warehouse completes and records the weighment, the entry is **immediately saved and closed** (`FinalApproved`). **No Admin authorization is required after warehouse unloading**.
 
 ---
 
@@ -77,9 +75,9 @@ The application enforces dedicated workspaces and permission boundaries for 4 di
 
 | Role | Role Name | Centre Scope | Responsibilities & Authorized Views |
 | :--- | :--- | :--- | :--- |
-| **Admin** | Purchase Head | All Centres (`ALL`) | - **Approvals**: Approve/reject over-ceiling and over-quota lots; authorize final rates for unloaded lots.<br>- **Price Masters**: Real-time plant delivered price publisher with version history; edit expense templates and margins.<br>- **Daily Quotas**: Set and enforce daily purchase volume limits (qtl) per centre and commodity.<br>- **User Management**: Create/edit users, assign roles, toggle commission reduction permissions, deactivate users.<br>- **Procurement Ledger**: Full cross-centre lot search, filtering, and audit log inspection.<br>- **Analytics**: Cross-centre inventory, freight variance, spend analysis. |
+| **Admin** | Purchase Head | All Centres (`ALL`) | - **Approvals**: Authorize over-ceiling and over-quota deals from field officers.<br>- **Master Entry Controls**: **Exclusive authority to Edit or Delete any procurement soda entry** across any centre.<br>- **Price Masters**: Real-time plant delivered price publisher with version history; dynamic plant prices take effect immediately across all calculations.<br>- **Expense & Freight Masters**: Configure percentage & fixed expenses (mandi fee, commission, hammali, transit, labour, bags) and **custom freight rates separately for every grade (Grade A, B, C)** per centre or globally.<br>- **Daily Quotas**: Set and enforce daily purchase volume limits (qtl) per centre and commodity.<br>- **User Management**: Create/edit users, assign roles, toggle commission reduction permissions, deactivate users.<br>- **Procurement Ledger**: Full cross-centre lot search, audit log inspection, with Edit & Delete actions. |
 | **Officer** | Field Officer | Assigned Centre (`DWL`, `SC2`, etc.) | - **Ceiling Calculator**: Real-time rate calculator with Hindi labels ("भाव कैसे बना"), moisture deduction preview, commission adjustment.<br>- **New Soda**: Farmer details entry, quota limit validation, material photo capture, instant WhatsApp deal share cards.<br>- **My Sodas**: Real-time status tracking for centre deals. |
-| **Warehouse** | Warehouse In-charge | Assigned Centre (`DWL`, etc.) | - **Unload & Weigh**: Search confirmed incoming sodas, record weighbridge gross and tare weights, enter final moisture, attach slip photo/PDF.<br>- **Dispatch**: Record outbound plant dispatches, vehicle tracking, freight variances, maintain live physical stock-in-hand.<br>- **Centre Sodas**: Monitor lot progress. |
+| **Warehouse** | Warehouse In-charge | Assigned Centre (`DWL`, etc.) | - **Unload & Weigh**: Search confirmed incoming sodas, record net weighbridge weight (gross/tare not needed), note unload moisture without price penalties, optionally override final settlement rate, attach weighment slip photo/PDF.<br>- **Direct Lot Closure**: Submitting weighment immediately finalizes and closes the entry.<br>- **Dispatch**: Outbound plant dispatches with grade-specific freight tracking, maintaining live physical stock-in-hand.<br>- **Centre Sodas**: Monitor lot progress. |
 | **Accounts** | Accounts & Finance | All Centres (`ALL`) | - **Financial Dashboard**: Procurement spend, pending liability, freight variances, volume summaries.<br>- **Ledger**: Complete cross-centre audit ledger with multi-parameter filtering.<br>- **Export**: 1-click Copy as CSV / Excel export for accounting reconciliation. |
 
 ### Authentication & Role Switching Security Rules
@@ -91,6 +89,9 @@ The application enforces dedicated workspaces and permission boundaries for 4 di
    - **Admin** (`role === 'Admin'`) possesses master switching privileges and can switch to any role workspace immediately without password verification.
    - **Non-admin roles** (Field Officer, Warehouse, Accounts) cannot switch roles freely. Attempting to switch triggers `RoleSwitchModal.jsx`, requiring the target role's password or the master Admin password.
    - Verified via `POST /api/auth/verify-role`.
+3. **Entry Modification & Deletion Privileges**:
+   - **Admin-Only**: Only the Admin role can edit deal terms or delete procurement lots (`EditSodaModal.jsx` and deletion in Master Procurement Ledger & `SodaDetailModal.jsx`).
+   - Field Officers, Warehouse In-charges, and Accounts personnel are strictly blocked from editing or deleting entries.
 
 ### Default Credentials Matrix
 
@@ -114,16 +115,12 @@ The application enforces dedicated workspaces and permission boundaries for 4 di
   - `DATABASE_URL_UNPOOLED`: Direct connection string for DDL migrations.
 - **Database Tables**:
   - `users`: `id`, `name`, `login_id`, `password`, `mobile`, `role`, `centre`, `active`, `can_cut_comm`, `last_login`, `created_at`.
-  - `plant_prices`: `id`, `commodity`, `grade`, `price`, `target_margin`, `updated_at`, `updated_by`.
+  - `plant_prices`: `id`, `commodity`, `grade`, `price`, `effective_at` (sorted by `id DESC` so newest published price takes immediate effect).
+  - `expense_settings`: `centre`, `expenses` (JSON array of percentage/fixed expenses including grade-specific freights `vg: { A, B, C }`), `updated_at`.
   - `daily_limits`: `id`, `centre`, `commodity`, `quota_limit`, `date`, `updated_at`.
-  - `sodas`: Full procurement records with farmer details, moisture, rates, status (`PendingApproval`, `Confirmed`, `Unloaded`, `Cancelled`), photos, and weighbridge data.
+  - `sodas`: Full procurement records with farmer details, moisture, rates, status (`PendingApproval`, `Confirmed`, `FinalApproved`, `Cancelled`), photos, and weighbridge data.
   - `dispatches`: Outbound plant dispatches, truck numbers, net weight, estimated vs actual freight.
   - `activity_logs`: Audit trail recording `user_name`, `action`, `details`, `created_at`.
-
-### Neon Auth Service
-- Managed Better Auth deployed on AWS with EdDSA JWKS endpoints:
-  - Auth URL: `https://ep-bitter-breeze-aryqw3hj.neonauth.c-4.us-west-2.aws.neon.tech/neondb/auth`
-  - JWKS Endpoint: `.../neondb/auth/.well-known/jwks.json`
 
 ### Unified API Handlers (`api/index.js` & `server/db.js`)
 - `GET /api/health`: Database connectivity, version, server timestamp.
@@ -131,11 +128,12 @@ The application enforces dedicated workspaces and permission boundaries for 4 di
 - `POST /api/auth/verify-role`: Validate role-switch authorization.
 - `GET /api/users` & `POST /api/users`: Retrieve or upsert user accounts.
 - `POST /api/users/:id/toggle`: Activate/deactivate user accounts.
-- `GET /api/plant-prices` & `POST /api/plant-prices`: Price master read/update.
-- `GET /api/daily-limits` & `POST /api/daily-limits`: Daily quota limits.
-- `GET /api/sodas`, `POST /api/sodas`, `POST /api/sodas/:id/status`, `POST /api/sodas/:id/unload`: Soda lifecycle.
+- `GET /api/plant-prices` & `POST /api/prices`: Price master read/update.
+- `GET /api/expenses` & `POST /api/expenses`: Expense & freight masters read/update.
+- `GET /api/daily-limits` & `POST /api/limits`: Daily quota limits.
+- `GET /api/sodas`, `POST /api/sodas`, `PUT /api/sodas/:id`, `DELETE /api/sodas/:id`: Soda lifecycle, modification, and deletion.
 - `GET /api/dispatches` & `POST /api/dispatches`: Plant dispatch tracking.
-- `GET /api/activity-logs`: Activity audit log.
+- `GET /api/activity`: Activity audit log.
 
 ---
 
@@ -167,18 +165,23 @@ flowchart TD
 
 ## 6. Recent Changes & Evolution Log
 
+- **2026-10-16 (Pricing Engine, Dynamic Expenses & Grade Freights, Admin Controls & Warehouse Workflow Redesign)**:
+  - **Fixed Plant Price Updates**: Resolved price sorting in `plantPrice()` by prioritizing primary key ID descending; newly published plant prices now immediately update reverse ceiling calculations and display tables across the application.
+  - **Dynamic Expenses & Grade-Specific Freight Masters**: Created `expense_settings` table in Neon Postgres and built an interactive Expense & Freight Manager in Admin Portal (`tab === 'expenses'`). Admin can customize percentage expenses (mandi fee, commission), fixed expenses (hammali, transit, labour, bags), and configure freight rates separately for Grade A, Grade B, and Grade C per centre or globally.
+  - **Admin-Only Entry Edit and Delete**: Enforced strict privilege control where only Admin can edit any soda details (`EditSodaModal.jsx`) or delete entries (`DELETE /api/sodas/:id`). Action buttons added to Master Procurement Ledger and `SodaDetailModal.jsx`.
+  - **Streamlined Weighment Intake**: Simplified warehouse unloading form to accept **Net Weight only**; gross and tare weights are no longer required.
+  - **Unload Moisture Non-Deductible**: Tested moisture at warehouse unloading is purely recorded for quality notes; it does not deduct from purchase price.
+  - **Final Price Override**: Warehouse unloading form provides an option to adjust the final settlement rate; if omitted, it defaults to the original agreed rate.
+  - **Direct Lot Closure**: Once warehouse unloads and saves the lot, the entry is immediately marked `FinalApproved` (saved and closed) without requiring subsequent Admin rate approval.
+  - Automated UTs (18/18) and E2E integration tests (34/34 assertions) verified passing 100%. Production build verified error-free.
 - **2026-10-16 (Auth Persistence & Test Automation)**:
   - Fixed logout persistence bug in `AppContext.jsx`: removed fallback admin auto-login on initial load; unauthenticated state now stays `null` so refreshing after logout remains on the `LoginPage`.
   - Removed demo credentials cards ("Role Credentials & Demo Logins") from `LoginPage.jsx` for production security and cleanliness.
   - Implemented automated headless Unit Testing (Vitest in `tests/unit/`) for pricing math and RBAC authorization policies.
-  - Implemented automated headless End-to-End integration suite (`scripts/test-e2e.js`) covering full lifecycle (auth, price masters, quota matrices, deal booking, approvals, unloading, freight dispatches, and audit trail).
-  - Enforced policy: Avoid slow/flaky web-browser testing; execute `npm test` (`test:unit` and `test:e2e`).
+  - Implemented automated headless End-to-End integration suite (`scripts/test-e2e.js`) covering full lifecycle.
 - **2026-10-16 (Architecture Documentation)**:
-  - Created comprehensive system architecture reference document ([`ARCHITECTURE.md`](file:///Users/mahatvagarg/Documents/GitHub/satyam%20purchase/ARCHITECTURE.md)) detailing client-server data flows, component hierarchy, entity-relationship models, sequence diagrams for authentication and role switching, and calculation engines.
+  - Created comprehensive system architecture reference document ([`ARCHITECTURE.md`](file:///Users/mahatvagarg/Documents/GitHub/satyam%20purchase/ARCHITECTURE.md)).
 - **2026-10-16**:
   - Implemented mandatory Continuous Auto-Update Protocol for Antigravity agents in `SKILL.md` and `AGENTS.md`.
-  - Removed all mobile/OTP login flows; enforced pure User ID (Username) + Password authentication across frontend and backend.
-  - Implemented role-switch security modal (`RoleSwitchModal.jsx`): Admin switches instantly; all other roles require password verification.
-  - Provisioned Neon Lakebase Postgres (v18.6) and Neon Auth; seeded live users and plant pricing.
-  - Converted prototype HTML into full React + Vite application with 4 distinct RBAC portals (Admin, Officer, Warehouse, Accounts).
-  - Configured Vercel serverless integration and pushed codebase to `https://github.com/mahatva/satyam-purchase.git`.
+  - Converted prototype HTML into full React + Vite application with 4 distinct RBAC portals.
+

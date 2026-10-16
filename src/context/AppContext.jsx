@@ -33,6 +33,14 @@ export const AppProvider = ({ children }) => {
   const [sodas, setSodas] = useState([]);
   const [dispatches, setDispatches] = useState([]);
   const [prices, setPrices] = useState([]);
+  const [expenses, setExpenses] = useState(() => {
+    try {
+      const saved = localStorage.getItem('satyam_expenses');
+      return saved ? JSON.parse(saved) : M.expenses;
+    } catch {
+      return M.expenses;
+    }
+  });
   const [limits, setLimits] = useState({});
   const [activityLogs, setActivityLogs] = useState([]);
   const [neonInfo, setNeonInfo] = useState({
@@ -102,6 +110,19 @@ export const AppProvider = ({ children }) => {
         setPrices(prData);
       }
 
+      // 5b. Expenses
+      const expRes = await fetch('/api/expenses');
+      if (expRes.ok) {
+        const expData = await expRes.json();
+        if (Array.isArray(expData) && expData.length > 0) {
+          const map = {};
+          expData.forEach((row) => {
+            map[row.centre] = typeof row.expenses === 'string' ? JSON.parse(row.expenses) : row.expenses;
+          });
+          setExpenses((prev) => ({ ...prev, ...map }));
+        }
+      }
+
       // 6. Limits
       const limRes = await fetch('/api/limits');
       if (limRes.ok) {
@@ -139,6 +160,13 @@ export const AppProvider = ({ children }) => {
       localStorage.removeItem('satyam_user');
     }
   }, [user]);
+
+  // Save expenses in localStorage
+  useEffect(() => {
+    if (expenses) {
+      localStorage.setItem('satyam_expenses', JSON.stringify(expenses));
+    }
+  }, [expenses]);
 
   // Auth operations
   const login = async (userId, password) => {
@@ -322,7 +350,7 @@ export const AppProvider = ({ children }) => {
         {
           at: new Date().toISOString(),
           u: `${user?.name} · Warehouse`,
-          a: `Unloaded · net ${unloadData.net_weight} qtl, moisture ${unloadData.final_moisture}%`,
+          a: `Weighment completed & closed · Net ${unloadData.net_weight} qtl @ ₹${unloadData.final_rate}/qtl (Payout: ₹${(unloadData.amount || 0).toLocaleString('en-IN')})`,
         },
       ];
       await fetch(`/api/sodas/${id}`, {
@@ -330,18 +358,112 @@ export const AppProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...unloadData,
-          status: 'Unloaded',
+          status: 'FinalApproved',
           history,
         }),
       });
-      logAudit(`Warehouse unloaded ${id}: net ${unloadData.net_weight} qtl`);
-      showToast(`Unload recorded for ${id} · sent for final approval`, 'ok');
+      logAudit(`Warehouse completed & closed soda ${id}: net ${unloadData.net_weight} qtl @ ₹${unloadData.final_rate}`);
+      showToast(`Weighment recorded for ${id} · Lot settled & closed!`, 'ok');
       refreshData();
     } catch (e) {
       setSodas((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ...unloadData, status: 'Unloaded' } : s))
+        prev.map((s) => (s.id === id ? { ...s, ...unloadData, status: 'FinalApproved' } : s))
       );
-      showToast(`Unloaded ${id}`, 'ok');
+      showToast(`Weighment saved & closed for ${id}`, 'ok');
+    }
+  };
+
+  const deleteSoda = async (id) => {
+    if (user?.role !== 'Admin') {
+      showToast('Permission Denied: Only Admin can delete entries', 'bad');
+      return false;
+    }
+    try {
+      const res = await fetch(`/api/sodas/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSodas((prev) => prev.filter((s) => s.id !== id));
+        logAudit(`Admin permanently deleted soda entry ${id}`);
+        showToast(`Entry ${id} deleted successfully`, 'ok');
+        refreshData();
+        return true;
+      }
+    } catch (e) {
+      setSodas((prev) => prev.filter((s) => s.id !== id));
+      showToast(`Entry ${id} deleted locally`, 'info');
+      return true;
+    }
+  };
+
+  const editSoda = async (id, updates) => {
+    if (user?.role !== 'Admin') {
+      showToast('Permission Denied: Only Admin can edit entries', 'bad');
+      return false;
+    }
+    try {
+      const existing = sodas.find((s) => s.id === id);
+      const history = [
+        ...(existing?.history || []),
+        {
+          at: new Date().toISOString(),
+          u: `${user?.name} · Admin`,
+          a: `Admin edited entry fields: ${Object.keys(updates).join(', ')}`,
+        },
+      ];
+      const res = await fetch(`/api/sodas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...updates, history }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSodas((prev) => prev.map((s) => (s.id === id ? updated : s)));
+        logAudit(`Admin updated soda entry ${id}`);
+        showToast(`Entry ${id} updated successfully`, 'ok');
+        refreshData();
+        return updated;
+      }
+    } catch (e) {
+      setSodas((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
+      showToast(`Entry ${id} updated locally`, 'info');
+      return true;
+    }
+  };
+
+  const saveExpenses = async (centreCode, expensesList) => {
+    try {
+      if (centreCode === 'ALL') {
+        const updatedAll = {};
+        for (const ce of M.centres) {
+          updatedAll[ce.code] = expensesList;
+          await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ centre: ce.code, expenses: expensesList }),
+          });
+        }
+        setExpenses((prev) => ({ ...prev, ...updatedAll }));
+        logAudit(`Admin updated expenses and freight for ALL centres`);
+        showToast('Expenses and freight updated for ALL centres!', 'ok');
+      } else {
+        await fetch('/api/expenses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ centre: centreCode, expenses: expensesList }),
+        });
+        setExpenses((prev) => ({ ...prev, [centreCode]: expensesList }));
+        logAudit(`Admin updated expenses and freight for centre ${centreCode}`);
+        showToast(`Expenses and freight updated for ${centreCode}!`, 'ok');
+      }
+      refreshData();
+    } catch (e) {
+      if (centreCode === 'ALL') {
+        const updatedAll = {};
+        for (const ce of M.centres) updatedAll[ce.code] = expensesList;
+        setExpenses((prev) => ({ ...prev, ...updatedAll }));
+      } else {
+        setExpenses((prev) => ({ ...prev, [centreCode]: expensesList }));
+      }
+      showToast(`Expenses saved locally for ${centreCode}`, 'info');
     }
   };
 
@@ -399,18 +521,32 @@ export const AppProvider = ({ children }) => {
   };
 
   const publishPrice = async (commodity, grade, price) => {
+    const effective_at = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const numPrice = Number(price);
     try {
-      const effective_at = new Date().toISOString().slice(0, 16).replace('T', ' ');
-      await fetch('/api/prices', {
+      const res = await fetch('/api/prices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commodity, grade, price, effective_at }),
+        body: JSON.stringify({ commodity, grade, price: numPrice, effective_at }),
       });
-      logAudit(`Published new price for ${commodity} ${grade}: ₹${price}/qtl`);
-      showToast(`Published ${commodity} Grade ${grade}: ₹${price}`, 'ok');
-      refreshData();
+      if (res.ok) {
+        const created = await res.json();
+        setPrices((prev) => [created, ...(prev || []).filter((p) => p.id !== created.id)]);
+      } else {
+        setPrices((prev) => [{ id: Date.now(), commodity, grade, price: numPrice, effective_at }, ...(prev || [])]);
+      }
+      logAudit(`Published new price for ${commodity} ${grade}: ₹${numPrice}/qtl`);
+      showToast(`Published ${commodity} Grade ${grade}: ₹${numPrice}`, 'ok');
+      await refreshData();
     } catch (e) {
-      showToast('Price updated locally', 'info');
+      setPrices((prev) => [{ id: Date.now(), commodity, grade, price: numPrice, effective_at }, ...(prev || [])]);
+      showToast(`Price updated locally for ${commodity} ${grade}: ₹${numPrice}`, 'info');
+    }
+  };
+
+  const publishPrices = async (priceUpdates) => {
+    for (const item of priceUpdates) {
+      await publishPrice(item.commodity, item.grade, item.price);
     }
   };
 
@@ -470,6 +606,7 @@ export const AppProvider = ({ children }) => {
         sodas,
         dispatches,
         prices,
+        expenses,
         limits,
         activityLogs,
         neonInfo,
@@ -488,9 +625,13 @@ export const AppProvider = ({ children }) => {
         approveSoda,
         cancelSoda,
         unloadSoda,
+        deleteSoda,
+        editSoda,
+        saveExpenses,
         approveFinalRate,
         createDispatch,
         publishPrice,
+        publishPrices,
         setLimit,
         saveUser,
         toggleUser,

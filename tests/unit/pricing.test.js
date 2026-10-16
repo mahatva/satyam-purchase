@@ -73,39 +73,63 @@ describe('Pricing & Reverse Ceiling Calculation Engine', () => {
 });
 
 describe('Warehouse Weighbridge Settlement (finalCalc)', () => {
-  it('calculates final settlement with no extra moisture penalty', () => {
+  it('calculates final settlement with same agreed rate when no price override is provided (moisture is noted only)', () => {
     const soda = {
       commodity: 'Maize',
       snap: { agreed: 2100, moistEntered: 14 },
     };
-    const res = finalCalc(soda, 14, 100);
-    expect(res.extra).toBe(0);
-    expect(res.rate).toBe(2100);
-    expect(res.amount).toBe(210000);
+    // Measured 16% moisture at warehouse (noted only, does not deduct rate)
+    const res = finalCalc(soda, 16, 120);
+    expect(res.rate).toBe(2100); // considers same old agreed rate
+    expect(res.amount).toBe(252000); // 120 qtl * 2100
   });
 
-  it('deducts weight penalty when warehouse measured moisture exceeds soda moisture', () => {
+  it('allows warehouse to override final rate upon arrival when negotiated', () => {
     const soda = {
       commodity: 'Maize',
-      snap: { agreed: 2000, moistEntered: 14 },
+      snap: { agreed: 2100, moistEntered: 14 },
     };
-    // Measured 15% moisture at warehouse (1% extra)
-    const res = finalCalc(soda, 15, 100);
-    expect(res.extra).toBe(1);
-    expect(res.rate).toBe(1980); // 1% deduction from 2000
-    expect(res.amount).toBe(198000);
+    // Final rate renegotiated to ₹2050
+    const res = finalCalc(soda, 15, 100, 2050);
+    expect(res.rate).toBe(2050);
+    expect(res.amount).toBe(205000);
   });
 
-  it('deducts price penalty for Chickpea at ₹30/qtl per 1% excess', () => {
+  it('correctly calculates settlement payout for Chickpea using agreed rate or override', () => {
     const soda = {
       commodity: 'Chickpea',
       snap: { agreed: 5500, moistEntered: 12 },
     };
-    // Measured 13% moisture (1% extra)
+    // Measured 13% moisture (noted), no override
     const res = finalCalc(soda, 13, 50);
-    expect(res.extra).toBe(1);
-    expect(res.rate).toBe(5470); // 5500 - 30
-    expect(res.amount).toBe(273500);
+    expect(res.rate).toBe(5500);
+    expect(res.amount).toBe(275000);
+  });
+
+  it('supports custom expenses map and grade-specific freights in reverse ceiling calculation', () => {
+    const customExpenses = {
+      DWL: [
+        { n: 'Mandi fee', t: 'pct', v: 2.0 },
+        { n: 'Commission', t: 'pct', v: 3.0 },
+        { n: 'Local hammali', t: 'fix', v: 25 },
+        { n: 'Local transit', t: 'fix', v: 25 },
+        { n: 'Loading labour', t: 'fix', v: 35 },
+        { n: 'Bags', t: 'fix', v: 45 },
+        { n: 'Freight to plant', t: 'fix', vg: { A: 100, B: 95, C: 90 } },
+      ],
+    };
+    const res = calc('DWL', 'Maize', 'A', 14, 3, null, customExpenses);
+    expect(res.Fix).toBe(230); // 25 + 25 + 35 + 45 + 100
+    expect(res.Pct).toBe(0.05); // 2% + 3%
+    expect(res.ceiling).toBeLessThan(2134); // higher expenses lower the ceiling
+  });
+
+  it('plantPrice prioritizes latest inserted row by primary key ID', () => {
+    const priceList = [
+      { id: 1, commodity: 'Maize', grade: 'A', price: 2500, effective_at: '2026-10-15 09:00' },
+      { id: 2, commodity: 'Maize', grade: 'A', price: 2600, effective_at: '2026-10-16 05:00' },
+    ];
+    expect(plantPrice(priceList, 'Maize', 'A')).toBe(2600);
   });
 });
 

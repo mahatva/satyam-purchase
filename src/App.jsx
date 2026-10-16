@@ -7,6 +7,7 @@ import { OfficerPortal } from './components/roles/OfficerPortal';
 import { WarehousePortal } from './components/roles/WarehousePortal';
 import { AccountsPortal } from './components/roles/AccountsPortal';
 import { SodaDetailModal } from './components/modals/SodaDetailModal';
+import { EditSodaModal } from './components/modals/EditSodaModal';
 import { UserModal } from './components/modals/UserModal';
 import { RoleSwitchModal } from './components/modals/RoleSwitchModal';
 import { ImageViewer } from './components/modals/ImageViewer';
@@ -31,6 +32,13 @@ const MainContent = () => {
       {/* Modals & Overlays */}
       {modal?.type === 'soda' && (
         <SodaDetailModal
+          soda={modal.data}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {modal?.type === 'edit-soda' && (
+        <EditSodaModal
           soda={modal.data}
           onClose={() => setModal(null)}
         />

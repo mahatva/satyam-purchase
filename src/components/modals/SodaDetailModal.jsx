@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { inr, q, r0, centreName, finalCalc } from '../../utils/calculations';
 
 export const SodaDetailModal = ({ soda, onClose }) => {
-  const { role, approveSoda, cancelSoda, approveFinalRate, setViewer } = useApp();
+  const { role, approveSoda, cancelSoda, approveFinalRate, deleteSoda, setModal, setViewer } = useApp();
 
   if (!soda) return null;
 
@@ -181,6 +181,35 @@ export const SodaDetailModal = ({ soda, onClose }) => {
           >
             Approve Final Settlement Rate @ {inr(fc.rate)} ({inr(fc.amount)})
           </button>
+        )}
+
+        {/* Master Admin Controls: Edit & Delete (Admin Only) */}
+        {role === 'Admin' && (
+          <div style={{ display: 'flex', gap: '8px', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--line)' }}>
+            <button
+              type="button"
+              className="btn sec sm"
+              style={{ flex: 1 }}
+              onClick={() => {
+                setModal({ type: 'edit-soda', data: soda });
+              }}
+            >
+              ✏️ Edit Entry (Admin Only)
+            </button>
+            <button
+              type="button"
+              className="btn bad sm"
+              style={{ flex: 1 }}
+              onClick={() => {
+                if (window.confirm(`Are you sure you want to permanently delete entry ${soda.id} for ${soda.farmer_name || soda.farmer}? This action cannot be undone.`)) {
+                  deleteSoda(soda.id);
+                  onClose();
+                }
+              }}
+            >
+              🗑️ Delete Entry
+            </button>
+          </div>
         )}
       </div>
     </div>

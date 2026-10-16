@@ -151,6 +151,12 @@ export async function updateSoda(id, updates) {
   const [updated] = await sql`
     UPDATE sodas
     SET status = ${merged.status},
+        farmer_name = ${merged.farmer_name},
+        farmer_mobile = ${merged.farmer_mobile ?? null},
+        village = ${merged.village ?? null},
+        commodity = ${merged.commodity},
+        grade = ${merged.grade},
+        approx_qty = ${merged.approx_qty},
         net_weight = ${merged.net_weight ?? null},
         final_moisture = ${merged.final_moisture ?? null},
         gross_weight = ${merged.gross_weight ?? null},
@@ -167,6 +173,31 @@ export async function updateSoda(id, updates) {
     RETURNING *
   `;
   return updated;
+}
+
+export async function deleteSoda(id) {
+  const sql = getSql();
+  const [deleted] = await sql`DELETE FROM sodas WHERE id = ${id} RETURNING *`;
+  return deleted;
+}
+
+export async function getExpenses() {
+  const sql = getSql();
+  return await sql`SELECT * FROM expense_settings`;
+}
+
+export async function saveExpenses(centre, expenses) {
+  const sql = getSql();
+  const expJson = typeof expenses === 'string' ? expenses : JSON.stringify(expenses);
+  const [saved] = await sql`
+    INSERT INTO expense_settings (centre, expenses, updated_at)
+    VALUES (${centre}, ${expJson}::jsonb, NOW())
+    ON CONFLICT (centre) DO UPDATE
+    SET expenses = ${expJson}::jsonb,
+        updated_at = NOW()
+    RETURNING *
+  `;
+  return saved;
 }
 
 export async function getDispatches(centre = null) {

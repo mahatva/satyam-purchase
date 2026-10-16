@@ -93,6 +93,25 @@ async function runE2ETests() {
     const updated = pricesAfter.find((p) => p.commodity === 'Maize' && p.grade === 'A');
     assert(Number(updated.price) === 2560, 'Plant price updated successfully to 2560');
 
+    // 5b. Expenses & Grade Freight Masters Tests
+    console.log('\n5b. Expense & Grade Freight Masters Tests:');
+    const testExpenses = [
+      { n: 'Mandi fee', t: 'pct', v: 1.7 },
+      { n: 'Local hammali', t: 'fix', v: 20 },
+      { n: 'Local transit', t: 'fix', v: 20 },
+      { n: 'Loading labour', t: 'fix', v: 33 },
+      { n: 'Commission', t: 'pct', v: 3 },
+      { n: 'Bags', t: 'fix', v: 40 },
+      { n: 'Freight to plant', t: 'fix', vg: { A: 95, B: 90, C: 85 } },
+    ];
+    await db.saveExpenses('DWL', testExpenses);
+    const expensesList = await db.getExpenses();
+    const dwlExp = expensesList.find((e) => e.centre === 'DWL');
+    assert(Boolean(dwlExp), 'Expenses saved and retrieved for DWL');
+    const dwlExpParsed = typeof dwlExp.expenses === 'string' ? JSON.parse(dwlExp.expenses) : dwlExp.expenses;
+    const freightItem = dwlExpParsed.find((e) => e.n === 'Freight to plant');
+    assert(freightItem.vg.A === 95, 'Freight for Grade A correctly saved as 95');
+
     // 6. Quota Limits Tests
     console.log('\n6. Daily Quotas Limit Tests:');
     const limits = await db.getDailyLimits();
@@ -105,7 +124,7 @@ async function runE2ETests() {
     );
     assert(Number(limitUpdated.limit_qty) === 250, 'Daily limit upserted to 250 qtl');
 
-    // 7. Full Procurement Soda Lifecycle (Create -> Approve -> Unload -> Dispatch)
+    // 7. Full Procurement Soda Lifecycle (Create -> Approve -> Net Weight Unload & Direct Close)
     console.log('\n7. End-to-End Procurement Lifecycle:');
     const testSodaId = `DWL261016-E2E-${Date.now().toString().slice(-4)}`;
     const newSoda = {
@@ -144,23 +163,21 @@ async function runE2ETests() {
     soda = sodas.find((s) => s.id === testSodaId);
     assert(soda.status === 'Confirmed', 'Soda status successfully transitioned to Confirmed');
 
-    // Step C: Warehouse unloads and records weighbridge data
+    // Step C: Warehouse unloads with Net Weight only, moisture noted (no price cut), directly closed!
     await db.updateSoda(testSodaId, {
-      status: 'Unloaded',
-      gross_weight: 122.5,
-      tare_weight: 2.5,
+      status: 'FinalApproved', // Directly saved and closed without needing admin approval
       net_weight: 120.0,
-      final_moisture: 15.0,
-      final_rate: 2108,
-      amount: 252960,
+      final_moisture: 15.5, // Noted only
+      final_rate: 2130, // Considers same old agreed rate
+      amount: 255600, // 120 * 2130
       slip_name: 'sample_e2e_slip.jpg',
     });
     sodas = await db.getSodas('DWL');
     soda = sodas.find((s) => s.id === testSodaId);
-    assert(soda.status === 'Unloaded', 'Soda successfully marked as Unloaded');
-    assert(Number(soda.net_weight) === 120, 'Net weight recorded as 120 qtl');
-    assert(Number(soda.final_rate) === 2108, 'Final rate with moisture penalty recorded as ₹2108');
-    assert(Number(soda.amount) === 252960, 'Final payable lot amount recorded as ₹2,52,960');
+    assert(soda.status === 'FinalApproved', 'Soda directly saved and closed as FinalApproved');
+    assert(Number(soda.net_weight) === 120, 'Net weight recorded as 120 qtl directly without gross/tare');
+    assert(Number(soda.final_rate) === 2130, 'Final rate retained agreed price ₹2130 without moisture deduction');
+    assert(Number(soda.amount) === 255600, 'Final payable lot amount recorded as ₹2,55,600');
 
     // Step D: Outbound dispatch
     const dispatchPayload = {
@@ -171,14 +188,29 @@ async function runE2ETests() {
       commodity: 'Maize',
       grade: 'A',
       qty: 120,
-      est_freight: 90,
-      actual_freight: 92,
+      est_freight: 95,
+      actual_freight: 95,
       destination_plant: 'Processing Plant 1',
     };
     await db.createDispatch(dispatchPayload);
     const dispatches = await db.getDispatches();
     const foundDispatch = dispatches.find((d) => d.vehicle_no === 'MP-09-HH-1234');
     assert(Boolean(foundDispatch), 'Outbound plant dispatch recorded successfully');
+
+    // Step E: Admin Edit and Delete Entry Tests
+    console.log('\n7b. Admin Entry Edit and Delete Tests:');
+    await db.updateSoda(testSodaId, {
+      farmer_name: 'Edited Farmer Name',
+      village: 'New Village Diwal',
+    });
+    sodas = await db.getSodas('DWL');
+    const editedSoda = sodas.find((s) => s.id === testSodaId);
+    assert(editedSoda.farmer_name === 'Edited Farmer Name', 'Admin successfully edited farmer name');
+
+    await db.deleteSoda(testSodaId);
+    sodas = await db.getSodas('DWL');
+    const deletedSoda = sodas.find((s) => s.id === testSodaId);
+    assert(!deletedSoda, 'Admin successfully deleted procurement entry');
 
     // 8. Audit Logs Verification
     console.log('\n8. Audit Logs & Activity Trail:');

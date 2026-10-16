@@ -16,7 +16,7 @@ import {
 } from '../../utils/calculations';
 
 export const OfficerPortal = () => {
-  const { user, centre, sodas, prices, limits, createSoda, setModal, showToast } = useApp();
+  const { user, centre, sodas, prices, expenses, limits, createSoda, setModal, showToast } = useApp();
   const [tab, setTab] = useState('new'); // 'new' | 'history'
 
   // Calculator & Form State
@@ -46,7 +46,8 @@ export const OfficerPortal = () => {
     grade,
     parseFloat(moisture) || 0,
     user?.can_cut_comm ? commission : null,
-    prices
+    prices,
+    expenses
   );
 
   const negotiatedPrice = parseFloat(price) || 0;
